@@ -154,60 +154,6 @@ val2 <- function(i, u = NULL)
 		pcontain90 = pcontain90, pcontain95 = pcontain95, u = u, statistic.sim.obj))
 }
 
-val3 <- function(i, u = NULL)
-{
-	rall <- ma + decomp.Va %*% rnorm(nrow(ma))
-	
-	y <- rall[opos,] + rnorm(length(opos), sd = sqrt(error.var))
-	yp <- rall[ppos,]
-
-	if(is.null(u)) { u <- quantile(yp, prob = lev/100) }
-
-	true.exceedance <- which(yp < u)
-
-	pred <- crossprod(w, y)
-	statistic <- (pred - u)/sqrt(mspe)	
-	
-	#compute gls estimates of regression coefficients
-	coeff <- solve(XtViX, crossprod(ViX, y))
-	
-	ekrige.obj <- list(pred = pred, mspe = mspe, coeff = coeff, vcov.coeff = vcov.coeff, 
-		ViVop = ViVop)
-
-	statistic.sim.obj <- statistic.sim(nsim = nsim, y = y, X = X, Xp = Xp, 
-		ekrige.obj = ekrige.obj, decomp.Vc = decomp.Vc, level = u, 
-		alternative = "greater", return.yp.sim = FALSE)
-	
-	#Critical values of statistic
-	q90 <- statistic.cv(statistic.sim.obj, conf.level = .90)
-	q95 <- statistic.cv(statistic.sim.obj, conf.level = .95)
-
-	#Construct null and rejection sets 
-	n90 <- exceedance.ci(statistic.sim.obj, conf.level = .90, type = "null")
-	n95 <- exceedance.ci(statistic.sim.obj, conf.level = .95, type = "null")	
-	r90 <- exceedance.ci(statistic.sim.obj, conf.level = .90, type = "rejection")
-	r95 <- exceedance.ci(statistic.sim.obj, conf.level = .95, type = "rejection")	
-
-	#Determine whether rejection region intersects true exceedance region
-	conf.success90 <- exceedance.success(r90, true.exceedance)
-	conf.success95 <- exceedance.success(r95, true.exceedance)
-
-	#Is the simulation a success
-	success90 <- conf.success90$success
-	success95 <- conf.success95$success
-	
-	#Proportion of true exceedance region contained in true confidence region
-	pcontain90 <- conf.success90$per
-	pcontain95 <- conf.success95$per
-
-	if(i %% nreport==0){ print(i); flush.console()}
-
-	return(list(statistic = statistic, true.exceedance = true.exceedance, 
-		q90 = q90, q95 = q95, n90 = n90, n95 = n95,
-		r90 = r90, r95 = r95, success90 = success90, success95 = success95,
-		pcontain90 = pcontain90, pcontain95 = pcontain95, u = u))
-}
-
 #Pixelize the domain into n x n equal sized pixels
 pixel.domain=function(xmin, xmax, ymin, ymax ,n, plot=FALSE)
 {
@@ -238,7 +184,7 @@ pixel.domain=function(xmin, xmax, ymin, ymax ,n, plot=FALSE)
   out
 }
 
-create.pgrid2 <- function(xmin, xmax, ymin, ymax, nx, ny, midpoints = TRUE,
+create.pgrid <- function(xmin, xmax, ymin, ymax, nx, ny, midpoints = TRUE,
 	coords = NULL)
 {
 	if(midpoints)
@@ -288,7 +234,7 @@ create.pgrid2 <- function(xmin, xmax, ymin, ymax, nx, ny, midpoints = TRUE,
 }
 
 
-create.pgrid <- function(xgrid, ygrid, midpoints = FALSE, coords = NULL)
+create.pgrid2 <- function(xgrid, ygrid, midpoints = FALSE, coords = NULL)
 {
 	nx <- length(xgrid)
 	ny <- length(ygrid)
