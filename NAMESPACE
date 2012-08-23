@@ -1,0 +1,9 @@
+export(create.pgrid)
+export(create.pgrid2)
+export(statistic.sim)
+export(statistic.cv)
+export(exceedance.ci)
+export(plot.pgrid)
+import(SpatialTools)
+import(splancs)
+
