@@ -115,12 +115,9 @@ create.pgrid2 <- function(xgrid, ygrid, midpoints = FALSE, poly.coords = NULL)
 	return(out)
 }
 
-statistic.sim <- function(krige.obj, level, alternative = "less")
+statistic.sim <- function(krige.obj, level, alternative = "less", ...)
 {
-	if(is.null(krige.obj$simulations))
-	{
-		stop("krige.obj must have conditional simulations")
-	}
+	statistics_sim_arg_check(krige.obj, level, alternative)
 
 	nsim <- ncol(krige.obj$simulations)
 	statistic <- (krige.obj$pred - level)/sqrt(krige.obj$mspe)
@@ -130,7 +127,7 @@ statistic.sim <- function(krige.obj, level, alternative = "less")
 	{
 		for(i in 1:nsim)
 		{
-			which.exceedance.sim <- which(krige.obj$simulations[, i] >= level)
+			which.exceedance.sim <- which(krige.obj$sim[, i] >= level)
 			if(length(which.exceedance.sim) > 0)
 			{
 				statistic.sim[i] <- min(statistic[which.exceedance.sim])
@@ -140,16 +137,38 @@ statistic.sim <- function(krige.obj, level, alternative = "less")
 	{
 		for(i in 1:nsim)
 		{
-			which.exceedance.sim <- which(krige.obj$simulations[, i] <= level)
+			which.exceedance.sim <- which(krige.obj$sim[, i] <= level)
 			if(length(which.exceedance.sim) > 0)
 			{
 				statistic.sim[i] <- max(statistic[which.exceedance.sim])
 			}
 		}
 	}
+	else
+	{
+		# Check arguments.  Create unspecified arguments if needed.
+		arglist <- list(...)
+		argnames <- names(arglist)
+		user.cov <- arglist$user.cov
+		X <- arglist$X
 
-	return(list(statistic = statistic, statistic.sim = statistic.sim, alternative = alternative, 
-			level = level))
+		for(i in 1:nsim)
+		{
+			simmat <- matrix(krige.obj$sim[, i], nrow = np, ncol = np)
+			sim.lc <- contourLines(upx, upy, simmat, levels = level)
+			
+			if(length(sim.lc) > 0)
+			{
+				pcoords <- get.contours(sim.lc)
+				obj <- user.cov(...)
+				krige.pcoords <- krige.uk(y, obj$V, obj$Vp, obj$Vop, X, obj$Xp)
+				statistic.sim[i] <- max(abs(krige.pcoords$pred - level)/sqrt(krige.pcoords$mspe))
+			}
+		}
+	}
+
+	return(list(statistic = statistic, statistic.sim = statistic.sim,  
+		alternative = alternative, level = level))
 }
 
 statistic.cv <- function(statistic.sim.obj, conf.level = .95)
