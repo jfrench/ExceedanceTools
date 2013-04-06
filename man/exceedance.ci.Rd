@@ -28,15 +28,60 @@ A character vector of 'null' or 'rejection' indicating whether the function shou
 \value{
 Returns a numeric vector with the set of pixels comprising the null or rejection region related to statistic.sim.
 }
-%\references{
-%% ~put references to the literature/web site here ~
-%}
+
+\references{
+French, J.P. and Sain, S.R. Spatio-Temporal Exceedance Locations and Confidence Regions. Annals of Applied Statistics.  Prepress.
+}
+
 \author{
 Joshua P. French
 }
 
 \examples{
-rnorm(10)
+library(SpatialTools)
+
+set.seed(10)
+
+# Load data
+data(sdata)
+
+# Create prediction grid
+pgrid <- create.pgrid(0, 1, 0, 1, nx = 26, ny = 26)
+pcoords <- pgrid$pgrid
+
+# Create design matrices
+X <- cbind(1, coords)
+Xp <- cbind(1, pcoords)
+
+# Generate covariance matrices V, Vp, Vop using appropriate parameters for observed
+# data and responses to be predicted
+spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5), 
+    error.var = 1/3, finescale.var = 0, pcoords = pcoords)
+
+# Predict responses at pgrid locations
+krige.obj <- krige.uk(y = as.vector(y), V = spcov$V, Vp = spcov$Vp, 
+	Vop = spcov$Vop, X = X, Xp = Xp, nsim = 2000, 
+	Ve.diag = rep(1/3, length(y)) , method = "chol")
+
+# Simulate distribution of test statistic for different alternatives
+statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, 
+	level = 5, alternative = "less")
+statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, 
+	level = 5, alternative = "greater")
+	
+# Construct null and rejection sets for two scenarios
+n90 <- exceedance.ci(statistic.sim.obj.less, 
+	conf.level = .90, type = "null")
+r90 <- exceedance.ci(statistic.sim.obj.greater, 
+	conf.level = .90, type = "rejection")
+
+# Plot results
+plot(pgrid, n90, col="blue", add = FALSE, xlab = "x", ylab = "y")
+plot(pgrid, r90, col="orange", add = TRUE)
+legend("bottomleft", 
+	legend = c("contains true exceedance region with 90 percent confidence", 
+	"is contained in true exceedance region with 90 percent confidence"), 
+	col = c("blue", "orange"), lwd = 10)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

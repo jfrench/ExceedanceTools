@@ -12,7 +12,7 @@ A package for constructing confidence regions for exceedance regions.
 Joshua P. French
 }
 \references{
-~~ Literature or other references for background information ~~
+French, J.P. and Sain, S.R. Spatio-Temporal Exceedance Locations and Confidence Regions. Annals of Applied Statistics.  Prepress.
 }
 
 \keyword{ package }

@@ -1,0 +1,427 @@
+plot(apply(pred.1, 1, sd), apply(pred.3, 1, sd))
+sds are the sameplot(apply(pred.1$p.predictive.samples, 1, sd), apply(pred.3, 1, sd))
+plot(y.hat[2, ], y.hat.3[2, ])
+rm(list=ls())library(spBayes)quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}in.out <- function(q, y){  if(y <= q[3] && y >= q[1]){1}else{0}}cover <- function(y.hat, y){  q <- apply(y.hat, 1, quant)  out <- rep(0, length(y))#
+  for(i in 1:length(y)){    out[i] <- in.out(q[,i],y[i])  }  out}#
+ppred3 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- theta[i,"sigma.sq"] + theta[i,"tau.sq"] - t(gamma)%*%S.inv%*%gamma#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}ppred4 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- 0#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}#
+set.seed(2)n <- 200coords <- cbind(runif(n,0,1), runif(n,0,1))X <- as.matrix(cbind(1, rnorm(n)))B <- as.matrix(c(1,5))p <- length(B)sigma.sq <- 10tau.sq <- 0.0phi <- 3/0.5D <- as.matrix(dist(coords))R <- exp(-phi*D)w <- rmvn(1, rep(0,n), sigma.sq*R)y <- rnorm(n, X%*%B + w, sqrt(tau.sq))##partition the data for out of sample predictionmod <- 1:100y.mod <- y[mod]X.mod <- X[mod,]coords.mod <- coords[mod,]y.ho <- y[-mod]X.ho <- X[-mod,]coords.ho <- coords[-mod,]n.samples <- 1000starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=0)tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)priors <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),               "sigma.sq.IG"=c(2, 5))cov.model <- "exponential"m.1 <- spLM(y.mod~X.mod-1, coords=coords.mod, starting=starting, tuning=tuning,priors=priors, cov.model=cov.model, n.samples=n.samples)burn.in <- 0.75*n.samplespred.1 <- spPredict(m.1, pred.covars=X.ho, pred.coords=coords.ho, start=burn.in)y.hat <- apply(pred.1$p.predictive.
+samples, 1, quant)plot(y.ho, y.hat[2,], ylim=c(-20,20), xlim=c(-20,20), pch=19, cex=0.5, xlab="observed y", ylab="predicted y")arrows(y.ho, y.hat[2,], y.ho, y.hat[1,], angle=90, length=0.05)arrows(y.ho, y.hat[2,], y.ho, y.hat[3,], angle=90, length=0.05)m.1 <- spRecover(m.1)##using ppred3B <- m.1$p.beta.recover.samples[burn.in:n.samples,]theta <- m.1$p.theta.recover.samples[burn.in:n.samples,]############## add a column of 0's to theta so that ppred3 doesn't have to be modifiedtheta <- cbind(theta, 0)colnames(theta) <- c("sigma.sq", "phi", "tau.sq")######################################################################################pred.2 <- ppred3(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.2 <- apply(pred.2, 1, quant)arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[1,], angle=90, length=0.05, col="green")arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[3,], angle=90, length=0.05, col="green")##check coverage (pretty close to 95)cover.95.ci <- cover(pred.1$p.predictive.samples, y.ho)s
+um(cover.95.ci)/length(cover.95.ci)#
+cover.95.ci <- cover(pred.2, y.ho)sum(cover.95.ci)/length(cover.95.ci)################# Calculate pred.3 using wrong posterior (conditional variance is 0)pred.3 <- ppred4(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.3 <- apply(pred.3, 1, quant)#
+# means are the sameplot(y.hat[2, ], y.hat.3[2, ])# sds are the sameplot(apply(pred.1$p.predictive.samples, 1, sd), apply(pred.3, 1, sd))
+update.packages()
+rm(list=ls())library(spBayes)quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}in.out <- function(q, y){  if(y <= q[3] && y >= q[1]){1}else{0}}cover <- function(y.hat, y){  q <- apply(y.hat, 1, quant)  out <- rep(0, length(y))#
+  for(i in 1:length(y)){    out[i] <- in.out(q[,i],y[i])  }  out}#
+ppred3 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- theta[i,"sigma.sq"] + theta[i,"tau.sq"] - t(gamma)%*%S.inv%*%gamma#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}set.seed(2)n <- 200coords <- cbind(runif(n,0,1), runif(n,0,1))X <- as.matrix(cbind(1, rnorm(n)))B <- as.matrix(c(1,5))p <- length(B)sigma.sq <- 10tau.sq <- 0.0phi <- 3/0.5D <- as.matrix(dist(coords))R <- exp(-phi*D)w <- rmvn(1, rep(0,n), sigma.sq*R)y <- rnorm(n, X%*%B + w, sqrt(tau.sq))##partition the data for out of sample predictionmod <- 1:100y.mod <- y[mod]X.mod <- X[mod,]coords.mod <- coords[mod,]y.ho <- y[-mod]X.ho <- X[-mod,]coords.ho <- coords[-mod,]n.samples <- 1000starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=0)tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)priors <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),               "sigma.sq.IG"=c(2, 5))cov.model <- "exponential"m.1 <- spLM(y.mod~X.mod-1, coords=coords
+.mod, starting=starting, tuning=tuning,priors=priors, cov.model=cov.model, n.samples=n.samples)burn.in <- 0.9*n.samplespred.1 <- spPredict(m.1, pred.covars=X.ho, pred.coords=coords.ho, start=burn.in)y.hat <- apply(pred.1$p.predictive.samples, 1, quant)plot(y.ho, y.hat[2,], ylim=c(-20,20), xlim=c(-20,20), pch=19, cex=0.5, xlab="observed y", ylab="predicted y")arrows(y.ho, y.hat[2,], y.ho, y.hat[1,], angle=90, length=0.05)arrows(y.ho, y.hat[2,], y.ho, y.hat[3,], angle=90, length=0.05)m.1 <- spRecover(m.1)##using ppred3B <- m.1$p.beta.recover.samples[burn.in:n.samples,]theta <- m.1$p.theta.recover.samples[burn.in:n.samples,]theta <- cbind(theta, 0)colnames(theta) <- c("sigma.sq", "phi", "tau.sq")pred.2 <- ppred3(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.2 <- apply(pred.2, 1, quant)arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[1,], angle=90, length=0.05, col="green")arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[3,], angle=90, length=0.05, col="green")##check coverage (pretty close
+to 95)cover.95.ci <- cover(pred.1$p.predictive.samples, y.ho)sum(cover.95.ci)/length(cover.95.ci)cover.95.ci <- cover(pred.2, y.ho)sum(cover.95.ci)/length(cover.95.ci)
+q()
+rm(list=ls())library(spBayes)quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}in.out <- function(q, y){  if(y <= q[3] && y >= q[1]){1}else{0}}cover <- function(y.hat, y){  q <- apply(y.hat, 1, quant)  out <- rep(0, length(y))#
+  for(i in 1:length(y)){    out[i] <- in.out(q[,i],y[i])  }  out}#
+ppred3 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- theta[i,"sigma.sq"] + theta[i,"tau.sq"] - t(gamma)%*%S.inv%*%gamma#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}set.seed(2)n <- 200coords <- cbind(runif(n,0,1), runif(n,0,1))X <- as.matrix(cbind(1, rnorm(n)))B <- as.matrix(c(1,5))p <- length(B)sigma.sq <- 10tau.sq <- 0.0phi <- 3/0.5D <- as.matrix(dist(coords))R <- exp(-phi*D)w <- rmvn(1, rep(0,n), sigma.sq*R)y <- rnorm(n, X%*%B + w, sqrt(tau.sq))##partition the data for out of sample predictionmod <- 1:100y.mod <- y[mod]X.mod <- X[mod,]coords.mod <- coords[mod,]y.ho <- y[-mod]X.ho <- X[-mod,]coords.ho <- coords[-mod,]n.samples <- 1000starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=0)tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)priors <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),               "sigma.sq.IG"=c(2, 5))cov.model <- "exponential"m.1 <- spLM(y.mod~X.mod-1, coords=coords
+.mod, starting=starting, tuning=tuning,priors=priors, cov.model=cov.model, n.samples=n.samples)burn.in <- 0.9*n.samplespred.1 <- spPredict(m.1, pred.covars=X.ho, pred.coords=coords.ho, start=burn.in)y.hat <- apply(pred.1$p.predictive.samples, 1, quant)plot(y.ho, y.hat[2,], ylim=c(-20,20), xlim=c(-20,20), pch=19, cex=0.5, xlab="observed y", ylab="predicted y")arrows(y.ho, y.hat[2,], y.ho, y.hat[1,], angle=90, length=0.05)arrows(y.ho, y.hat[2,], y.ho, y.hat[3,], angle=90, length=0.05)m.1 <- spRecover(m.1)##using ppred3B <- m.1$p.beta.recover.samples[burn.in:n.samples,]theta <- m.1$p.theta.recover.samples[burn.in:n.samples,]theta <- cbind(theta, 0)colnames(theta) <- c("sigma.sq", "phi", "tau.sq")pred.2 <- ppred3(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.2 <- apply(pred.2, 1, quant)arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[1,], angle=90, length=0.05, col="green")arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[3,], angle=90, length=0.05, col="green")##check coverage (pretty close
+to 95)cover.95.ci <- cover(pred.1$p.predictive.samples, y.ho)sum(cover.95.ci)/length(cover.95.ci)cover.95.ci <- cover(pred.2, y.ho)sum(cover.95.ci)/length(cover.95.ci)
+update.packages()
+rm(list=ls())library(spBayes)quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}in.out <- function(q, y){  if(y <= q[3] && y >= q[1]){1}else{0}}cover <- function(y.hat, y){  q <- apply(y.hat, 1, quant)  out <- rep(0, length(y))#
+  for(i in 1:length(y)){    out[i] <- in.out(q[,i],y[i])  }  out}#
+ppred3 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- theta[i,"sigma.sq"] + theta[i,"tau.sq"] - t(gamma)%*%S.inv%*%gamma#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}set.seed(2)n <- 200coords <- cbind(runif(n,0,1), runif(n,0,1))X <- as.matrix(cbind(1, rnorm(n)))B <- as.matrix(c(1,5))p <- length(B)sigma.sq <- 10tau.sq <- 0.0phi <- 3/0.5D <- as.matrix(dist(coords))R <- exp(-phi*D)w <- rmvn(1, rep(0,n), sigma.sq*R)y <- rnorm(n, X%*%B + w, sqrt(tau.sq))##partition the data for out of sample predictionmod <- 1:100y.mod <- y[mod]X.mod <- X[mod,]coords.mod <- coords[mod,]y.ho <- y[-mod]X.ho <- X[-mod,]coords.ho <- coords[-mod,]n.samples <- 1000starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=0)tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)priors <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),               "sigma.sq.IG"=c(2, 5))cov.model <- "exponential"m.1 <- spLM(y.mod~X.mod-1, coords=coords
+.mod, starting=starting, tuning=tuning,priors=priors, cov.model=cov.model, n.samples=n.samples)burn.in <- 0.9*n.samplespred.1 <- spPredict(m.1, pred.covars=X.ho, pred.coords=coords.ho, start=burn.in)y.hat <- apply(pred.1$p.predictive.samples, 1, quant)plot(y.ho, y.hat[2,], ylim=c(-20,20), xlim=c(-20,20), pch=19, cex=0.5, xlab="observed y", ylab="predicted y")arrows(y.ho, y.hat[2,], y.ho, y.hat[1,], angle=90, length=0.05)arrows(y.ho, y.hat[2,], y.ho, y.hat[3,], angle=90, length=0.05)m.1 <- spRecover(m.1)##using ppred3B <- m.1$p.beta.recover.samples[burn.in:n.samples,]theta <- m.1$p.theta.recover.samples[burn.in:n.samples,]theta <- cbind(theta, 0)colnames(theta) <- c("sigma.sq", "phi", "tau.sq")pred.2 <- ppred3(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.2 <- apply(pred.2, 1, quant)arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[1,], angle=90, length=0.05, col="green")arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[3,], angle=90, length=0.05, col="green")##check coverage (pretty close
+to 95)cover.95.ci <- cover(pred.1$p.predictive.samples, y.ho)sum(cover.95.ci)/length(cover.95.ci)cover.95.ci <- cover(pred.2, y.ho)sum(cover.95.ci)/length(cover.95.ci)
+rm(list=ls())library(spBayes)quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}in.out <- function(q, y){  if(y <= q[3] && y >= q[1]){1}else{0}}cover <- function(y.hat, y){  q <- apply(y.hat, 1, quant)  out <- rep(0, length(y))#
+  for(i in 1:length(y)){    out[i] <- in.out(q[,i],y[i])  }  out}#
+ppred3 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- theta[i,"sigma.sq"] + theta[i,"tau.sq"] - t(gamma)%*%S.inv%*%gamma#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}ppred4 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- 0#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}#
+set.seed(2)n <- 200coords <- cbind(runif(n,0,1), runif(n,0,1))X <- as.matrix(cbind(1, rnorm(n)))B <- as.matrix(c(1,5))p <- length(B)sigma.sq <- 10tau.sq <- 0.0phi <- 3/0.5D <- as.matrix(dist(coords))R <- exp(-phi*D)w <- rmvn(1, rep(0,n), sigma.sq*R)y <- rnorm(n, X%*%B + w, sqrt(tau.sq))##partition the data for out of sample predictionmod <- 1:100y.mod <- y[mod]X.mod <- X[mod,]coords.mod <- coords[mod,]y.ho <- y[-mod]X.ho <- X[-mod,]coords.ho <- coords[-mod,]n.samples <- 1000starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=0)tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)priors <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),               "sigma.sq.IG"=c(2, 5))cov.model <- "exponential"m.1 <- spLM(y.mod~X.mod-1, coords=coords.mod, starting=starting, tuning=tuning,priors=priors, cov.model=cov.model, n.samples=n.samples)burn.in <- 0.75*n.samplespred.1 <- spPredict(m.1, pred.covars=X.ho, pred.coords=coords.ho, start=burn.in)y.hat <- apply(pred.1$p.predictive.
+samples, 1, quant)plot(y.ho, y.hat[2,], ylim=c(-20,20), xlim=c(-20,20), pch=19, cex=0.5, xlab="observed y", ylab="predicted y")arrows(y.ho, y.hat[2,], y.ho, y.hat[1,], angle=90, length=0.05)arrows(y.ho, y.hat[2,], y.ho, y.hat[3,], angle=90, length=0.05)m.1 <- spRecover(m.1)##using ppred3B <- m.1$p.beta.recover.samples[burn.in:n.samples,]theta <- m.1$p.theta.recover.samples[burn.in:n.samples,]############## add a column of 0's to theta so that ppred3 doesn't have to be modifiedtheta <- cbind(theta, 0)colnames(theta) <- c("sigma.sq", "phi", "tau.sq")######################################################################################pred.2 <- ppred3(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.2 <- apply(pred.2, 1, quant)arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[1,], angle=90, length=0.05, col="green")arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[3,], angle=90, length=0.05, col="green")##check coverage (pretty close to 95)cover.95.ci <- cover(pred.1$p.predictive.samples, y.ho)s
+um(cover.95.ci)/length(cover.95.ci)#
+cover.95.ci <- cover(pred.2, y.ho)sum(cover.95.ci)/length(cover.95.ci)
+rm(list=ls())library(spBayes)quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}in.out <- function(q, y){  if(y <= q[3] && y >= q[1]){1}else{0}}cover <- function(y.hat, y){  q <- apply(y.hat, 1, quant)  out <- rep(0, length(y))#
+  for(i in 1:length(y)){    out[i] <- in.out(q[,i],y[i])  }  out}#
+ppred3 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- theta[i,"sigma.sq"] + theta[i,"tau.sq"] - t(gamma)%*%S.inv%*%gamma#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}set.seed(2)n <- 200coords <- cbind(runif(n,0,1), runif(n,0,1))X <- as.matrix(cbind(1, rnorm(n)))B <- as.matrix(c(1,5))p <- length(B)sigma.sq <- 10tau.sq <- 0.0phi <- 3/0.5D <- as.matrix(dist(coords))R <- exp(-phi*D)w <- rmvn(1, rep(0,n), sigma.sq*R)y <- rnorm(n, X%*%B + w, sqrt(tau.sq))##partition the data for out of sample predictionmod <- 1:100y.mod <- y[mod]X.mod <- X[mod,]coords.mod <- coords[mod,]y.ho <- y[-mod]X.ho <- X[-mod,]coords.ho <- coords[-mod,]n.samples <- 1000starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=0)tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)priors <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),               "sigma.sq.IG"=c(2, 5))cov.model <- "exponential"m.1 <- spLM(y.mod~X.mod-1, coords=coords
+.mod, starting=starting, tuning=tuning,priors=priors, cov.model=cov.model, n.samples=n.samples)burn.in <- 0.75*n.samplespred.1 <- spPredict(m.1, pred.covars=X.ho, pred.coords=coords.ho, start=burn.in)y.hat <- apply(pred.1$p.predictive.samples, 1, quant)plot(y.ho, y.hat[2,], ylim=c(-20,20), xlim=c(-20,20), pch=19, cex=0.5, xlab="observed y", ylab="predicted y")arrows(y.ho, y.hat[2,], y.ho, y.hat[1,], angle=90, length=0.05)arrows(y.ho, y.hat[2,], y.ho, y.hat[3,], angle=90, length=0.05)m.1 <- spRecover(m.1)##using ppred3B <- m.1$p.beta.recover.samples[burn.in:n.samples,]theta <- m.1$p.theta.recover.samples[burn.in:n.samples,]############## add a column of 0's to theta so that ppred3 doesn't have to be modifiedtheta <- cbind(theta, 0)colnames(theta) <- c("sigma.sq", "phi", "tau.sq")######################################################################################pred.2 <- ppred3(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.2 <- apply(pred.2, 1, quant)arrows(y.ho, y.ha
+t.2[2,], y.ho, y.hat.2[1,], angle=90, length=0.05, col="green")arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[3,], angle=90, length=0.05, col="green")##check coverage (pretty close to 95)cover.95.ci <- cover(pred.1$p.predictive.samples, y.ho)sum(cover.95.ci)/length(cover.95.ci)#
+cover.95.ci <- cover(pred.2, y.ho)sum(cover.95.ci)/length(cover.95.ci)
+rm(list=ls())library(spBayes)quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}in.out <- function(q, y){  if(y <= q[3] && y >= q[1]){1}else{0}}cover <- function(y.hat, y){  q <- apply(y.hat, 1, quant)  out <- rep(0, length(y))#
+  for(i in 1:length(y)){    out[i] <- in.out(q[,i],y[i])  }  out}#
+ppred3 <- function(y, obs.x, obs.coords, B, theta, pred.x, pred.coords){  	nsim <- nrow(theta)        np <- nrow(pred.coords)        D.obs <- iDist(obs.coords)        n <- nrow(obs.coords)#
+	yp.sim <- matrix(0, nrow = np, ncol = nsim)	for(i in 1:nsim)          {            S.inv <- chol2inv(chol(theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*D.obs)+diag(theta[i,"tau.sq"], n)))#
+            for(j in 1:np){#
+              gamma <- theta[i,"sigma.sq"]*exp(-theta[i,"phi"]*iDist(obs.coords, pred.coords[j,,drop=F]))#
+              y.mu <- pred.x[j,]%*%B[i,] + t(gamma)%*%S.inv%*%(y - obs.x%*%B[i,])#
+              y.var <- theta[i,"sigma.sq"] + theta[i,"tau.sq"] - t(gamma)%*%S.inv%*%gamma#
+              yp.sim[j,i] <- rnorm(1, y.mu, sqrt(y.var))            }#
+            if(i %% 100 == 0)              cat(paste(i, ""))          }#
+	cat(paste("\n"))	return(yp.sim)      }rmvn <- function(n, mu=0, V = matrix(1)){  p <- length(mu)  if(any(is.na(match(dim(V),p))))    stop("Dimension problem!")  D <- chol(V)  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))}set.seed(2)n <- 200coords <- cbind(runif(n,0,1), runif(n,0,1))X <- as.matrix(cbind(1, rnorm(n)))B <- as.matrix(c(1,5))p <- length(B)sigma.sq <- 10tau.sq <- 0.0phi <- 3/0.5D <- as.matrix(dist(coords))R <- exp(-phi*D)w <- rmvn(1, rep(0,n), sigma.sq*R)y <- rnorm(n, X%*%B + w, sqrt(tau.sq))##partition the data for out of sample predictionmod <- 1:100y.mod <- y[mod]X.mod <- X[mod,]coords.mod <- coords[mod,]y.ho <- y[-mod]X.ho <- X[-mod,]coords.ho <- coords[-mod,]n.samples <- 1000starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=0)tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)priors <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),               "sigma.sq.IG"=c(2, 5))cov.model <- "exponential"m.1 <- spLM(y.mod~X.mod-1, coords=coords
+.mod, starting=starting, tuning=tuning,priors=priors, cov.model=cov.model, n.samples=n.samples)burn.in <- 0.75*n.samplespred.1 <- spPredict(m.1, pred.covars=X.ho, pred.coords=coords.ho, start=burn.in)y.hat <- apply(pred.1$p.predictive.samples, 1, quant)plot(y.ho, y.hat[2,], ylim=c(-20,20), xlim=c(-20,20), pch=19, cex=0.5, xlab="observed y", ylab="predicted y")arrows(y.ho, y.hat[2,], y.ho, y.hat[1,], angle=90, length=0.05)arrows(y.ho, y.hat[2,], y.ho, y.hat[3,], angle=90, length=0.05)m.1 <- spRecover(m.1)##using ppred3B <- m.1$p.beta.recover.samples[burn.in:n.samples,]theta <- m.1$p.theta.recover.samples[burn.in:n.samples,]############## add a column of 0's to theta so that ppred3 doesn't have to be modifiedtheta <- cbind(theta, 0)colnames(theta) <- c("sigma.sq", "phi", "tau.sq")######################################################################################pred.2 <- ppred3(y.mod, X.mod, coords.mod, B, theta, X.ho, coords.ho)y.hat.2 <- apply(pred.2, 1, quant)arrows(y.ho, y.ha
+t.2[2,], y.ho, y.hat.2[1,], angle=90, length=0.05, col="green")arrows(y.ho, y.hat.2[2,], y.ho, y.hat.2[3,], angle=90, length=0.05, col="green")##check coverage (pretty close to 95)cover.95.ci <- cover(pred.1$p.predictive.samples, y.ho)sum(cover.95.ci)/length(cover.95.ci)#
+cover.95.ci <- cover(pred.2, y.ho)sum(cover.95.ci)/length(cover.95.ci)
+?lnnorm
+??log nor
+?normal
+??normal
+??log
+?grf
+library(geoR)
+?grf
+16 * 4 /3
+6^3/3
+6^2/2
+n <- 75set.seed(14)library(geoR)library(fields)library(rgl)library(RColorBrewer)mycol <- brewer.pal(3, "RdYlBu")dat <- grf(n^2, grid = "reg", cov.pars = c(5, 2), kappa = 0.5)dat$data <- -dat$datau <- quantile(dat$data, prob = .7)xgrid <- unique(dat$coords[,1])ygrid <- unique(dat$coords[,2])zmat <- matrix(dat$data, ncol = n)image.plot(xgrid, ygrid, zmat)mycol <- rep("cyan", n^2)exceedance <- which(dat$data > u)mycol[exceedance] <- "orange"persp3d(xgrid, ygrid, zmat, xlab = "x1", ylab = "x2",	zlab = "", col = mycol, axes = FALSE)view3d(userMatrix = matrix(viewpoint, nrow = 4, byrow = TRUE), zoom = .9)
+library(lattice)
+install.packages("rgl")
+levelplot(dat$data ~ dat$coords[,1] + dat$coords[,2], at = c(min(dat$dat) - 1, u, max(dat$data + 1)), cuts = 3, col.regions = c("cyan", "orange"), regions = TRUE, xlab = "x", ylab = "y", colorkey = FALSE)
+ngrid <- 1000x <- seq(-3, 3, len = ngrid)y <- seq(-3, 3, len = ngrid)mygrid <- expand.grid(x, y)zmat <- 18 - outer(x^2, y^2, "+")z <- as.vector(zmat)u <- 14mycol <- rep("cyan", ngrid^2)exceedance <- which(z > u)mycol[exceedance] <- "black"#
+r3dDefaults$windowRect <- c(0,50, 700, 700)persp3d(x, y, zmat, xlab = "", ylab = "",	zlab = "", col = mycol, axes = FALSE)viewpoint <- c(0.7661822,  0.6389298, 0.06880111,    0,-0.2780435,  0.2330756, 0.93186253,    0, 0.5793588, -0.7331061, 0.35622856,    0,0.0000000,  0.0000000, 0.00000000,    1)view3d(userMatrix = matrix(viewpoint, nrow = 4, byrow = TRUE), zoom = 1.1)
+library(rgl)
+ngrid <- 1000x <- seq(-3, 3, len = ngrid)y <- seq(-3, 3, len = ngrid)mygrid <- expand.grid(x, y)zmat <- 18 - outer(x^2, y^2, "+")z <- as.vector(zmat)u <- 14mycol <- rep("cyan", ngrid^2)exceedance <- which(z > u)mycol[exceedance] <- "black"#
+r3dDefaults$windowRect <- c(0,50, 700, 700)persp3d(x, y, zmat, xlab = "", ylab = "",	zlab = "", col = mycol, axes = FALSE)viewpoint <- c(0.7661822,  0.6389298, 0.06880111,    0,-0.2780435,  0.2330756, 0.93186253,    0, 0.5793588, -0.7331061, 0.35622856,    0,0.0000000,  0.0000000, 0.00000000,    1)view3d(userMatrix = matrix(viewpoint, nrow = 4, byrow = TRUE), zoom = 1.1)
+make zero marginstheme.novpadding <-   list(layout.heights =        list(top.padding = 0, 	    main.key.padding = 0, 	    key.axis.padding = 0, 	    axis.xlab.padding = 0, 	    xlab.key.padding = 0, 	    key.sub.padding = 0, 	    bottom.padding = 0),        layout.widths =        list(left.padding = 0, 	    key.ylab.padding = 0, 	    ylab.axis.padding = 0, 	    axis.key.padding = 0, 	    right.padding = 0))#
+theme.axis <-  axis.default(side = c("top", "bottom", "left", "right"),                 scales, components, as.table,                 labels = "no",                 ticks = "no")#
+theme.panel.axis = panel.axis(side = c("bottom", "left", "top", "right"),               labels = FALSE,               draw.labels = FALSE,               ticks = FALSE)levelplot(z ~ mygrid[,1] + mygrid[,2], at = c(min(z) - 1, u, max(z + 1)), cuts = 3, col.regions = c("cyan", "black"), regions = TRUE, xlab = "x", ylab = "y", colorkey = FALSE, par.settings = theme.novpadding, theme.panel.axis)
+mycol
+brewercol <- brewer.pal(3, "RdYlBu")
+brewercol
+make graphics to describe confidence region for exceedance set#and a region which is entirely contained in the exceedance settheta <- seq(0, 2*pi, len = 1000)make.circle <- function(theta, r){	x <- r * cos(theta)	y <- r * sin(theta)		return(cbind(x, y))}c1 <- make.circle(theta, 1)c2 <- make.circle(theta, 2)c3 <- make.circle(theta, 3)
+getwd()
+pdf("conf1.pdf")plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf2.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[1], border = "transparent")dev.off()pdf("conf3.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[1], border = "transparent")polygon(c2, col = "black", border = "transparent")dev.off()#
+pdf("conf4.pdf")plot(c3, type = "n")polygon(c1, col = "orange", border = "transparent")dev.off()pdf("conf5.pdf")plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")polygon(c1, col = "orange", border = "transparent")dev.off()pdf("conf6.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[1], border = "transparent")polygon(c2, col = "black", border = "transparent")polygon(c1, col = "orange", border = "transparent")dev.off()
+pdf("conf1.pdf")plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf2.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")dev.off()pdf("conf3.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")dev.off()#
+pdf("conf4.pdf")plot(c3, type = "n")polygon(c1, col = "orange", border = "transparent")dev.off()pdf("conf5.pdf")plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")polygon(c1, col = "orange", border = "transparent")dev.off()pdf("conf6.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")polygon(c1, col = "orange", border = "transparent")dev.off()
+pdf("conf1.pdf")plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf2.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")dev.off()pdf("conf3.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")dev.off()#
+pdf("conf4.pdf")plot(c3, type = "n")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf5.pdf")plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf6.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border = "transparent")dev.off()
+plot(c3, type = "n", xaxt = "n", yaxt = "n", ann = FALSE)polygon(c2, col = "black", border = "transparent")
+par(mar = c(0, 0, 0, 0))
+plot(c3, type = "n", xaxt = "n", yaxt = "n", ann = FALSE)polygon(c2, col = "black", border = "transparent")
+plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")
+par(mar = c(0, 0, 0, 0) + .1)pdf("conf1.pdf")plot(c3, type = "n", xaxt = "n", yaxt = "n", ann = FALSE)polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf2.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")dev.off()pdf("conf3.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")dev.off()#
+pdf("conf4.pdf")plot(c3, type = "n")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf5.pdf")plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf6.pdf")plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border = "transparent")dev.off()
+pdf("conf1.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n", xaxt = "n", yaxt = "n", ann = FALSE)polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf2.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")dev.off()pdf("conf3.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf4.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf5.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf6.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border
+= "transparent")dev.off()
+dev.off()
+pdf("conf1.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n", xaxt = "n", yaxt = "n", ann = FALSE)polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf2.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")dev.off()pdf("conf3.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")dev.off()pdf("conf4.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf5.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border = "transparent")dev.off()pdf("conf6.pdf")par(mar = c(0, 0, 0, 0) + .1)plot(c3, type = "n")polygon(c3, col = brewercol[3], border = "transparent")polygon(c2, col = "black", border = "transparent")polygon(c1, col = brewercol[1], border
+= "transparent")dev.off()
+brewercol
+25/256
+26/256
+25/255
+43/255
+11/255
+145/255
+191/255
+219/255
+x <- seq(-4, 4, len = 1000)y <- dnorm(x)x2 <- seq(-1.96, 4, len = 1000)x2mod <- c(-1.96,seq(-1.96, 4, len = 1000), 4, 1.96) y2 <- c(0, dnorm(x2), 0, 0)pdf("Eu_null_region.pdf")plot(x, y, type = "l", xlab = "test statistic", ylab = "density", cex.lab = 1.5)polygon(x2mod, y2, col = brewercol[3])arrows(-1.96, .3, -1.96, 0)text(-1.96, .315, expression(hat(italic(C))[italic(alpha)]), cex = 1.5)arrows(2, .3, 0, .1)text(2, .315, "Null region", cex = 1.5)title(expression(italic(H[a]): italic(Y(bold(s),t[p])<u)), cex.main = 1.5)dev.off()x2 <- seq(1.96, 4, len = 1000)x2mod <- c(1.96,seq(1.96, 4, len = 1000), 4, 1.96) y2 <- c(0, dnorm(x2), 0, 0)#
+pdf("Hu_rejection_region.pdf")plot(x, y, type = "l", xlab = "test statistic", ylab = "density", cex.lab = 1.5)polygon(x2mod, y2, col = brewercol[1])arrows(-1.96, .3, 1.96, 0)text(-1.96, .315, expression(hat(italic(C))[italic(alpha)]), cex = 1.5)arrows(2.25, .3, 2.25, .01)text(2.45, .315, "Rejection region", cex = 1.5)title(expression(italic(H[a]): italic(Y(bold(s),t[p])>u)), cex.main = 1.5)dev.off()
+pdf("Eu_null_region.pdf")plot(x, y, type = "l", xlab = "test statistic", ylab = "density", cex.lab = 1.5)polygon(x2mod, y2, col = brewercol[3])arrows(-1.96, .3, -1.96, 0)text(-1.96, .315, expression(hat(italic(C))[italic(alpha)]), cex = 1.5)arrows(2, .3, 0, .1)text(2, .315, "Null region", cex = 1.5)title(expression(italic(H[a]): italic(Y(bold(s))<u)), cex.main = 1.5)dev.off()x2 <- seq(1.96, 4, len = 1000)x2mod <- c(1.96,seq(1.96, 4, len = 1000), 4, 1.96) y2 <- c(0, dnorm(x2), 0, 0)#
+pdf("Hu_rejection_region.pdf")plot(x, y, type = "l", xlab = "test statistic", ylab = "density", cex.lab = 1.5)polygon(x2mod, y2, col = brewercol[1])arrows(-1.96, .3, 1.96, 0)text(-1.96, .315, expression(hat(italic(C))[italic(alpha)]), cex = 1.5)arrows(2.25, .3, 2.25, .01)text(2.45, .315, "Rejection region", cex = 1.5)title(expression(italic(H[a]): italic(Y(bold(s))>u)), cex.main = 1.5)dev.off()
+30 * 365 * 20150
+30 * 365 * 20150/2
+gamma(3)
+20^2 * .1
+20^2 * .1 + 72 + 40
+152 - 12^2
+?pbinom
+?pexp
+5/36
+10/36
+19/36
+.52 + .28 + .14
+pexp(3) - pexp(1)
+dbinom(4, 10, .4)
+-1.5/1.2
+.5/1.2
+6/50
+71-16
+55/71
+71-25
+71-14
+71-12
+59/71
+71-24
+71-37.5
+71-16.5
+54.5-71
+54.5/71
+71-13
+71-16
+55/71
+71-27
+77/71
+44/71
+46/71
+84-28
+84-15
+84-9
+84-26
+56-84
+56/84
+58/84
+61/84
+library(ExceedanceTools)
+sdata <- rmvnorm(1, mu = X %*% c(1, 2, 4), V = V)
+library(SpatialTools)
+sdata <- rmvnorm(1, mu = X %*% c(1, 2, 4), V = V)
+set.seed(10)coords <- matrix(runif(200), ncol = 2))pgrid <- create.pgrid(0, 1, 0, 1, nx = 101, ny = 101))pcoords <- pgrid$pcoordslibrary(SpatialTools)phi <- 1.5smoothness <- 3.5lev <- 85t.par <- .5error.var <- 1ox <- runif(nperyear, min = x.min, max = x.max)oy <- runif(nperyear, min = y.min, max = y.max)time <- rep(1:nyrs, each = nperyear)ptime <- rep(nyrs + 1, ngrid^2)pgrid <- create.pgrid(seq(x.min, x.max, len = ngrid + 1), 	seq(y.min, y.max, len = ngrid + 1))pcoords <- pgrid$pcoordsupx <- pgrid$upxupy <- pgrid$upyX <- cbind(1, coords)Xp <- cbind(1, pcoords)spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 0, finescale.var = 0, pcoords = pcoords)V <- stcov$Vsdata <- rmvnorm(1, mu = X %*% c(1, 2, 4), V = V)
+V <- scov$V
+coords <- matrix(runif(200), ncol = 2)
+pgrid <- create.pgrid(0, 1, 0, 1, nx = 101, ny = 101))pcoords <- pgrid$pcoordslibrary(SpatialTools)phi <- 1.5smoothness <- 3.5lev <- 85t.par <- .5error.var <- 1ptime <- rep(nyrs + 1, ngrid^2)pgrid <- create.pgrid(seq(x.min, x.max, len = ngrid + 1), 	seq(y.min, y.max, len = ngrid + 1))pcoords <- pgrid$pcoordsupx <- pgrid$upxupy <- pgrid$upyX <- cbind(1, coords)Xp <- cbind(1, pcoords)spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 0, finescale.var = 0, pcoords = pcoords)V <- scov$V
+library(ExceedanceTools)
+ptime <- rep(nyrs + 1, ngrid^2)pgrid <- create.pgrid(seq(x.min, x.max, len = ngrid + 1), 	seq(y.min, y.max, len = ngrid + 1))pcoords <- pgrid$pcoordsupx <- pgrid$upxupy <- pgrid$upyX <- cbind(1, coords)Xp <- cbind(1, pcoords)spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 0, finescale.var = 0, pcoords = pcoords)V <- scov$Vsdata <- rmvnorm(1, mu = X %*% c(1, 2, 4), V = V)
+V <- spcov$V
+spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 0, finescale.var = 0, pcoords = pcoords)V <- spcov$V
+pgrid <- create.pgrid(0, 1, 0, 1, nx = 101, ny = 101))pcoords <- pgrid$pcoords
+pgrid <- create.pgrid(0, 1, 0, 1, nx = 101, ny = 101)
+pcoords <- pgrid$pcoords
+X <- cbind(1, coords)Xp <- cbind(1, pcoords)
+spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 0, finescale.var = 0, pcoords = pcoords)
+V <- spcov$V
+sdata <- rmvnorm(1, mu = X %*% c(1, 2, 4), V = V)
+sqrt(.11)
+sdata <- sdata + rnorm(length(sdata), 0, sd = .1)
+?save
+save(sdata, file = "~/Dropbox/sdata.RData")
+save(coords, sdata, file = "~/Dropbox/sdata.RData")
+save(coords, y, file = "~/Dropbox/sdata.RData")
+load("~/Dropbox/sdata.RData")
+ls()
+coords
+library(SpatialTools)library(ExceedanceTools)set.seed(10)#Create design matrices for observed (X) and predicted (Xp) responses.load("~/Dropbox/sdata.RData")pgrid <- create.pgrid(0, 1, 0, 1, nx = 26, ny = 26)pcoords <- pgrid$pcoordsX <- cbind(1, coords)Xp <- cbind(1, pcoords)#Generate covariance matrices V, Vp, Vop using appropriate parametersspcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 1/3, finescale.var = 0, pcoords = pcoords)
+Predict responses at pgrid locationskrige.obj <- krige.uk(y = as.vector(y), V = spcov$V, Vp = spcov$Vp, Vop = spcov$Vop, 	X = X, Xp = Xp, nsim = 2000, Ve.diag = rep(1/3, length(y)) , method = "chol")# simulate distribution of test statisticstatistic.sim.obj <- statistic.sim(krige.obj = krige.obj, 	level = u, alternative = "less")
+range(y)
+load("~/Dropbox/sdata.RData")
+y
+load("~/Dropbox/sdata.RData")
+ls()
+load("~/Dropbox/sdata.RData")
+y <- sdata
+save(coords, y, file = "~/Dropbox/sdata.RData")
+load("~/Dropbox/sdata.RData")
+ls()
+library(SpatialTools)library(ExceedanceTools)set.seed(10)#Create design matrices for observed (X) and predicted (Xp) responses.load("~/Dropbox/sdata.RData")pgrid <- create.pgrid(0, 1, 0, 1, nx = 26, ny = 26)pcoords <- pgrid$pcoordsX <- cbind(1, coords)Xp <- cbind(1, pcoords)#Generate covariance matrices V, Vp, Vop using appropriate parametersspcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 1/3, finescale.var = 0, pcoords = pcoords)
+Predict responses at pgrid locationskrige.obj <- krige.uk(y = as.vector(y), V = spcov$V, Vp = spcov$Vp, Vop = spcov$Vop, 	X = X, Xp = Xp, nsim = 2000, Ve.diag = rep(1/3, length(y)) , method = "chol")
+pcoords
+pgrid <- create.pgrid(0, 1, 0, 1, nx = 26, ny = 26)pcoords <- pgrid$pcoords
+pcoords
+pcoords <- pgrid$pgrid
+X <- cbind(1, coords)Xp <- cbind(1, pcoords)#Generate covariance matrices V, Vp, Vop using appropriate parametersspcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 1/3, finescale.var = 0, pcoords = pcoords)
+Predict responses at pgrid locationskrige.obj <- krige.uk(y = as.vector(y), V = spcov$V, Vp = spcov$Vp, Vop = spcov$Vop, 	X = X, Xp = Xp, nsim = 2000, Ve.diag = rep(1/3, length(y)) , method = "chol")
+range(y)
+statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "less")statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "greater")
+krige.obj <- krige.uk(y = as.vector(y), V = spcov$V, Vp = spcov$Vp, Vop = spcov$Vop, 	X = X, Xp = Xp, nsim = 2000, Ve.diag = rep(1/3, length(y)) , method = "chol")
+statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "less")
+krige.obj
+names(krige.obj)
+statistic.sim <- function(krige.obj, level, alternative = "less"){	if(is.null(krige.obj$sim))	{		stop("krige.obj must have conditional simulations")	}	nsim <- ncol(krige.obj$simu)	statistic <- (krige.obj$pred - level)/sqrt(krige.obj$mspe)	statistic.sim <- numeric(nsim)	if(alternative == "less")	{		for(i in 1:nsim)		{			which.exceedance.sim <- which(krige.obj$sim[, i] >= level)			if(length(which.exceedance.sim) > 0)			{				statistic.sim[i] <- min(statistic[which.exceedance.sim])			}		}	}else if(alternative == "greater")	{		for(i in 1:nsim)		{			which.exceedance.sim <- which(krige.obj$sim[, i] <= level)			if(length(which.exceedance.sim) > 0)			{				statistic.sim[i] <- max(statistic[which.exceedance.sim])			}		}	}	return(list(statistic = statistic, statistic.sim = statistic.sim, alternative = alternative, 			level = level))}
+statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "less")statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "greater")
+statistic.sim <- function(krige.obj, level, alternative = "less"){	if(is.null(krige.obj$sim))	{		stop("krige.obj must have conditional simulations")	}	nsim <- ncol(krige.obj$sim)	statistic <- (krige.obj$pred - level)/sqrt(krige.obj$mspe)	statistic.sim <- numeric(nsim)	if(alternative == "less")	{		for(i in 1:nsim)		{			which.exceedance.sim <- which(krige.obj$sim[, i] >= level)			if(length(which.exceedance.sim) > 0)			{				statistic.sim[i] <- min(statistic[which.exceedance.sim])			}		}	}else if(alternative == "greater")	{		for(i in 1:nsim)		{			which.exceedance.sim <- which(krige.obj$sim[, i] <= level)			if(length(which.exceedance.sim) > 0)			{				statistic.sim[i] <- max(statistic[which.exceedance.sim])			}		}	}	return(list(statistic = statistic, statistic.sim = statistic.sim, alternative = alternative, 			level = level))}
+simulate distribution of test statistic for different alternativesstatistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "less")statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "greater")
+q90.less <- statistic.cv(statistic.sim.obj.less, conf.level = .90)q90.greater <- statistic.cv(statistic.sim.greater, conf.level = .90)
+q90.greater <- statistic.cv(statistic.sim.obj.greater, conf.level = .90)
+Critical values of statisticsq90.less <- statistic.cv(statistic.sim.obj.less, conf.level = .90)q90.greater <- statistic.cv(statistic.sim.obj.greater, conf.level = .90)
+Construct null and rejection sets for two scenariosn90 <- exceedance.ci(statistic.sim.obj.less, conf.level = .90, type = "null")r90 <- exceedance.ci(statistic.sim.obj.greater, conf.level = .90, type = "rejection")
+plot.pgrid(n90, pgrid = pgrid, col="blue", add = FALSE)
+pgrid <- create.pgrid(0, 1, 0, 1, nx = 26, ny = 26)
+plot(pgrid, n90, col="blue", add = FALSE)
+plot(pgrid, r90, col="orange", add = TRUE)
+legend("bottomleft", legend = c("contains true exceedance region with 90% confidence", 	"is contained in true exceedance region with 90% confidence"), col = c("blue", "orange"))
+legend("bottomleft", legend = c("contains true exceedance region with 90% confidence", 	"is contained in true exceedance region with 90% confidence"), col = c("blue", "orange"), lwd = 10)
+plot(pgrid, n90, col="blue", add = FALSE)plot(pgrid, r90, col="orange", add = TRUE)legend("bottomleft", legend = c("contains true exceedance region with 90% confidence", 	"is contained in true exceedance region with 90% confidence"), col = c("blue", "orange"), lwd = 10)
+pgrid <- create.pgrid2(seq(0, 1, len = 101), seq(0, 1, len = 101), midpoint = FALSE)
+pgrid
+pgrid <- create.pgrid2(seq(0, 1, len = 101), seq(0, 1, len = 101), midpoint = FALSE)#
+#
+pgridb <- create.pgrid(seq(.005, .995, len = 100), seq(.005, .995, len = 100), midpoint = TRUE)#
+#
+# grids produced match#
+range(pgrid$pgrid - pgridb$pgrid)
+pgrid <- create.pgrid2(seq(0, 1, len = 101), seq(0, 1, len = 101), midpoint = FALSE)#
+#
+pgridb <- create.pgrid2(seq(.005, .995, len = 100), seq(.005, .995, len = 100), midpoint = TRUE)#
+#
+# grids produced match#
+range(pgrid$pgrid - pgridb$pgrid)
+library(SpatialTools)library(ExceedanceTools)set.seed(10)
+data(sdata)
+library(SpatialTools)library(ExceedanceTools)set.seed(10)
+data(sdata)
+Load datadata(sdata)# Create prediction gridpgrid <- create.pgrid(0, 1, 0, 1, nx = 26, ny = 26)pcoords <- pgrid$pgrid# Create design matricesX <- cbind(1, coords)Xp <- cbind(1, pcoords)# Generate covariance matrices V, Vp, Vop using appropriate parameters for observed# data and responses to be predictedspcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),     error.var = 1/3, finescale.var = 0, pcoords = pcoords)# Predict responses at pgrid locationskrige.obj <- krige.uk(y = as.vector(y), V = spcov$V, Vp = spcov$Vp, Vop = spcov$Vop, 	X = X, Xp = Xp, nsim = 2000, Ve.diag = rep(1/3, length(y)) , method = "chol")# Simulate distribution of test statistic for different alternativesstatistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "less")statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, 	level = 5, alternative = "greater")#
+# Construct null and rejection sets for two scenariosn90 <- exceedance.ci(statistic.sim.obj.less, conf.level = .90, type = "null")r90 <- exceedance.ci(statistic.sim.obj.greater, conf.level = .90, type = "rejection")# Plot resultsplot(pgrid, n90, col="blue", add = FALSE)plot(pgrid, r90, col="orange", add = TRUE)legend("bottomleft", legend = c("contains true exceedance region with 90% confidence", 	"is contained in true exceedance region with 90% confidence"), col = c("blue", "orange"), lwd = 10)
+Plot resultsplot(pgrid, n90, col="blue", add = FALSE, xlab = "x", ylab = "y")plot(pgrid, r90, col="orange", add = TRUE)legend("bottomleft", legend = c("contains true exceedance region with 90% confidence", 	"is contained in true exceedance region with 90% confidence"), col = c("blue", "orange"), lwd = 10)
+q90.less <- statistic.cv(statistic.sim.obj.less, conf.level = .90)q90.greater <- statistic.cv(statistic.sim.obj.greater, conf.level = .90)
+q90
+q90.less
+q90.greater
+names(n90)
+n90
+gamma(2)
+Validate empirical critical valuerm(list=ls())library(ExceedanceTools)library(SpatialTools)runtime <- Sys.time()# Set the working directory#thewd <- getwd()thewd <- "~/Dropbox/UCD_Files/Research/Publications/Confidence-Regions-for-Level-Curves-Simulation"source(file.path(thewd, "cl_validate2.R"))thewd <- "~"# Set arguments/parameters that stay the same for each simulationssp.type <- "exponential"sigmasq <- 1n <- 50; np <- 50nreport <- 100; nval <- 3; nsim <- 20h <- 4; res <- 720X <- matrix(1, nrow = no); Xp <- matrix(1, nrow = np^2)# Set random number seed for reproducibilityset.seed(7)# set possible spatial correlations, error variances, and level percentile # error variancesmycor <- c(.5, 1.5, 5)myvar <- c(0, .5)mylev <- c(50, 75, 90)smoothness <- 1.5# storage containers for later informationstore.success <- as.data.frame(matrix(0, nrow = 18, ncol = 8))store.pixels <- matrix(0, ncol = 18, nrow = nval + 3)# Used to monitor the number of simulation experiments performed,
+total time# dedicated to the methodologycount <- 0total.time <- 0# Loop over parameter valuesfor(k in 1:3){	# Make directory to store output information	system(paste("mkdir", file.path(thewd, mylev[k])))	setwd(file.path(thewd, mylev[k]))#
+	for(j in 1:2)	{		for(i in 1:3)		{			# Set current parameters			count <- count + 1			phi <- mycor[i]			error.var <- myvar[j]			lev <- mylev[k]			sp.par <- c(sigmasq, phi)#
+			# Determine naming scheme for output files			if(sp.type == "exponential")			{ ifelse(phi == .5, scor <- "w", ifelse(phi == 1.5, scor <- "m", scor <- "s"))}			if(sp.type == "spherical")			{ ifelse(phi == 1.5, scor <- "w", ifelse(phi == 4.5, scor <- "m", scor <- "s")) }			#matern strong is phi <- 3.16			if(sp.type == "matern")			{ ifelse(phi == .316, scor <- "w", ifelse(phi == .9486, scor <- "m", scor <- "s"))  }#
+			pic.title <- paste(sp.type, "_", scor, "_", lev, sep="")			if(error.var > 0){ pic.title <- paste(pic.title, "_nugget", sep = "") }#
+			coords <- matrix(runif(no * 2), ncol = 2)			pgrid <- create.pgrid(0, 1, 0, 1, nx = np, ny = np)			pcoords <- pgrid$pgrid; upx <- pgrid$upx; upy <- pgrid$upy#
+			# Combine observed and future coordinates/times			acoords <- rbind(coords, pcoords)			# Determine positions of observed and predicted responses in allcoords			opos <- 1:no			ppos <- no + 1:np^2#
+			# Generate covariance matrices V, Vp, Vop using appropriate parameters			spcov <- cov.sp(coords = coords, sp.type = sp.type, sp.par = sp.par, 				error.var = error.var, smoothness = smoothness, finescale.var = 0, pcoords = pcoords)#
+			# Generate error free covariance version of V (for later generating random fields)			V.noerror <- cov.sp(coords = coords, sp.type = sp.type, sp.par = sp.par, 				error.var = 0, smoothness = smoothness, finescale.var = 0, pcoords = pcoords)$V#
+			# Extract matrices from list, create other additional objects needed for val function			V <- spcov$V; Vop <- spcov$Vop; Vp <- spcov$Vp; 			Ve.diag <- rep(error.var, no)			Va <- rbind(cbind(V.noerror, Vop), cbind(t(Vop), Vp))			decomp.Va <- decomp.cov(Va)			# Run simulations for nval realizations of a spatial random field			mysim <- lapply(1:nval, val, u = NULL, method = "chol")#
+			# Create storage objects for later use			success <- matrix(0, nrow = nval, ncol = 2)			pcontain <- matrix(0, nrow = nval, ncol = 2)			alln90 <- matrix(0, nrow = nval, ncol = ngrid^2)			alln95 <- matrix(0, nrow = nval, ncol = ngrid^2)			all.true.exceedance <- matrix(0, nrow = nval, ncol = ngrid^2)			pixel.count <- numeric(nval)#
+			# Extract information from mysim object and place in the appropriate location			for(l in 1:nval)			{				success[l, 1] <- mysim[[l]]$success90				success[l, 2] <- mysim[[l]]$success95				pcontain[l, 1] <- mysim[[l]]$pcontain90				pcontain[l, 2] <- mysim[[l]]$pcontain95				alln90[l, mysim[[l]]$n90] <- 1				alln95[l, mysim[[l]]$n90] <- 1				all.true.exceedance[l, mysim[[l]]$true.exceedance] <- 1				pixel.count[l] <- length(mysim[[l]]$n90)				total.time <- total.time + mysim[[i]]$sim.time			}			store.success[count, 1] <- store.pixels[1, count] <- phi			store.success[count, 2] <- store.pixels[2, count] <- t.par			store.success[count, 3] <- store.pixels[3, count] <- error.var			store.success[count, 4:5] <- colMeans(success)			store.success[count, 6:7] <- colMeans(pcontain)			store.success[count, 8] <- shape[k]			store.pixels[4:(nval + 3), count] <- pixel.count#
+		}	}}# Write count of pixels from each simulationwrite(t(store.pixels), file = paste("shape_pixels.txt", sep = ""), ncol = 18)# Return to original working directorysetwd(thewd)# View resultscolnames(store.success) <- c("sp.cor", "t.cor", "error.var", "conf.90", "conf.95", "prop.90", "prop.95", "shape")store.success#average time per realizationtotal.time/(nval * count)
+Validate empirical critical valuerm(list=ls())library(ExceedanceTools)library(SpatialTools)runtime <- Sys.time()# Set the working directory#thewd <- getwd()thewd <- "~/Dropbox/UCD_Files/Research/Publications/Confidence-Regions-for-Level-Curves-Simulation"source(file.path(thewd, "cl_validate2.R"))thewd <- "~"# Set arguments/parameters that stay the same for each simulationssp.type <- "exponential"sigmasq <- 1no <- 50; np <- 50nreport <- 100; nval <- 3; nsim <- 20h <- 4; res <- 720X <- matrix(1, nrow = no); Xp <- matrix(1, nrow = np^2)# Set random number seed for reproducibilityset.seed(7)# set possible spatial correlations, error variances, and level percentile # error variancesmycor <- c(.5, 1.5, 5)myvar <- c(0, .5)mylev <- c(50, 75, 90)smoothness <- 1.5# storage containers for later informationstore.success <- as.data.frame(matrix(0, nrow = 18, ncol = 8))store.pixels <- matrix(0, ncol = 18, nrow = nval + 3)# Used to monitor the number of simulation experiments performed
+, total time# dedicated to the methodologycount <- 0total.time <- 0# Loop over parameter valuesfor(k in 1:3){	# Make directory to store output information	system(paste("mkdir", file.path(thewd, mylev[k])))	setwd(file.path(thewd, mylev[k]))#
+	for(j in 1:2)	{		for(i in 1:3)		{			# Set current parameters			count <- count + 1			phi <- mycor[i]			error.var <- myvar[j]			lev <- mylev[k]			sp.par <- c(sigmasq, phi)#
+			# Determine naming scheme for output files			if(sp.type == "exponential")			{ ifelse(phi == .5, scor <- "w", ifelse(phi == 1.5, scor <- "m", scor <- "s"))}			if(sp.type == "spherical")			{ ifelse(phi == 1.5, scor <- "w", ifelse(phi == 4.5, scor <- "m", scor <- "s")) }			#matern strong is phi <- 3.16			if(sp.type == "matern")			{ ifelse(phi == .316, scor <- "w", ifelse(phi == .9486, scor <- "m", scor <- "s"))  }#
+			pic.title <- paste(sp.type, "_", scor, "_", lev, sep="")			if(error.var > 0){ pic.title <- paste(pic.title, "_nugget", sep = "") }#
+			coords <- matrix(runif(no * 2), ncol = 2)			pgrid <- create.pgrid(0, 1, 0, 1, nx = np, ny = np)			pcoords <- pgrid$pgrid; upx <- pgrid$upx; upy <- pgrid$upy#
+			# Combine observed and future coordinates/times			acoords <- rbind(coords, pcoords)			# Determine positions of observed and predicted responses in allcoords			opos <- 1:no			ppos <- no + 1:np^2#
+			# Generate covariance matrices V, Vp, Vop using appropriate parameters			spcov <- cov.sp(coords = coords, sp.type = sp.type, sp.par = sp.par, 				error.var = error.var, smoothness = smoothness, finescale.var = 0, pcoords = pcoords)#
+			# Generate error free covariance version of V (for later generating random fields)			V.noerror <- cov.sp(coords = coords, sp.type = sp.type, sp.par = sp.par, 				error.var = 0, smoothness = smoothness, finescale.var = 0, pcoords = pcoords)$V#
+			# Extract matrices from list, create other additional objects needed for val function			V <- spcov$V; Vop <- spcov$Vop; Vp <- spcov$Vp; 			Ve.diag <- rep(error.var, no)			Va <- rbind(cbind(V.noerror, Vop), cbind(t(Vop), Vp))			decomp.Va <- decomp.cov(Va)			# Run simulations for nval realizations of a spatial random field			mysim <- lapply(1:nval, val, u = NULL, method = "chol")#
+			# Create storage objects for later use			success <- matrix(0, nrow = nval, ncol = 2)			pcontain <- matrix(0, nrow = nval, ncol = 2)			alln90 <- matrix(0, nrow = nval, ncol = ngrid^2)			alln95 <- matrix(0, nrow = nval, ncol = ngrid^2)			all.true.exceedance <- matrix(0, nrow = nval, ncol = ngrid^2)			pixel.count <- numeric(nval)#
+			# Extract information from mysim object and place in the appropriate location			for(l in 1:nval)			{				success[l, 1] <- mysim[[l]]$success90				success[l, 2] <- mysim[[l]]$success95				pcontain[l, 1] <- mysim[[l]]$pcontain90				pcontain[l, 2] <- mysim[[l]]$pcontain95				alln90[l, mysim[[l]]$n90] <- 1				alln95[l, mysim[[l]]$n90] <- 1				all.true.exceedance[l, mysim[[l]]$true.exceedance] <- 1				pixel.count[l] <- length(mysim[[l]]$n90)				total.time <- total.time + mysim[[i]]$sim.time			}			store.success[count, 1] <- store.pixels[1, count] <- phi			store.success[count, 2] <- store.pixels[2, count] <- t.par			store.success[count, 3] <- store.pixels[3, count] <- error.var			store.success[count, 4:5] <- colMeans(success)			store.success[count, 6:7] <- colMeans(pcontain)			store.success[count, 8] <- shape[k]			store.pixels[4:(nval + 3), count] <- pixel.count#
+		}	}}# Write count of pixels from each simulationwrite(t(store.pixels), file = paste("shape_pixels.txt", sep = ""), ncol = 18)# Return to original working directorysetwd(thewd)# View resultscolnames(store.success) <- c("sp.cor", "t.cor", "error.var", "conf.90", "conf.95", "prop.90", "prop.95", "shape")store.success#average time per realizationtotal.time/(nval * count)
+q()
+Validate empirical critical valuerm(list=ls())library(SpatialTools)setwd("~/Dropbox/Code/GitHub/ExceedanceTools/R")source("ExceedanceTools_arg_check.R")source("ExceedanceTools.R")runtime <- Sys.time()# Set the working directory#thewd <- getwd()thewd <- "~/Dropbox/UCD_Files/Research/Publications/Confidence-Regions-for-Level-Curves-Simulation"source(file.path(thewd, "cl_validate.R"))thewd <- "~"# Set arguments/parameters that stay the same for each simulationssp.type <- "exponential"sigmasq <- 1no <- 50; np <- 50nreport <- 100; nval <- 200; nsim <- 2000X <- matrix(1, nrow = no); Xp <- matrix(1, nrow = np^2)# Set random number seed for reproducibilityset.seed(7)# storage containers for later informationstore.success <- as.data.frame(matrix(0, nrow = 18, ncol = 8))phi <- .5error.var <- 0.1lev <- 75smoothness <- 1.5sp.par <- c(sigmasq, phi)coords <- matrix(runif(no * 2), ncol = 2)pgrid <- create.pgrid(0, 1, 0, 1, nx = np, ny = np)pcoords <- pgrid$pgrid; upx <- pgrid$upx; upy <- pgrid$upy# Combine observed and future coordinates/timesacoords <- rbind(coords, pcoords)# Determine positions of observed and predicted responses in allcoordsopos <- 1:noppos <- no + 1:np^2# Generate covariance matrices V, Vp, Vop using appropriate parametersspcov <- cov.sp(coords = coords, sp.type = sp.type, sp.par = sp.par, 	error.var = error.var, smoothness = smoothness, finescale.var = 0, pcoords = pcoords)# Generate error free covariance version of V (for later generating random fields)V.noerror <- cov.sp(coords = coords, sp.type = sp.type, sp.par = sp.par, 	error.var = 0, smoothness = smoothness, finescale.var = 0, pcoords = pcoords)$V# Extract matrices from list, create other additional objects needed for val functionV <- spcov$V; Vop <- spcov$Vop; Vp <- spcov$Vp; Ve.diag <- rep(error.var, no)Va <- rbind(cbind(V.noerror, Vop), cbind(t(Vop), Vp))decomp.Va <- decomp.cov(Va)u <- NULLmethod <- "chol"
+simulate "observed" and "future" observations	rall <- decomp.Va %*% rnorm(no + np^2)#
+	# separate "observed" and "future" observations	y <- rall[opos,] + rnorm(length(opos), sd = sqrt(error.var))	yp <- rall[ppos,]	# determine threshold if not supplied	if(is.null(u)) { u <- quantile(yp, prob = lev/100) }	# determine true exceedance region	true.cL <- contourLines(pgrid$upx, pgrid$upy, matrix(yp, nrow = np, ncol = np), 		levels = u)	true.cL.coords <- get.contours(true.cL)
+??extract
+Take the list of contours from contourLines() and extracts coordinates get.contours=function(contours.list){	x <- y <- NULL	for(i in 1:length(contours.list))	{		x <- c(x, contours.list[[i]]$x)		y <- c(y, contours.list[[i]]$y)	}	cbind(x,y)}#Plot contour lines from contourLinesplot.contourLines <- function(x, begin=1, end = length(x), add = FALSE, ...){	if(!add)	{		contours <- get.contour(x)		rx <- range(contours$x)		ry <- range(contours$y)		plot(rx, ry, type = "n", ...)#
+	}	for(i in begin:end)	{		lines(x[[i]]$x, x[[i]]$y, ...)	}}
+simulate "observed" and "future" observations	rall <- decomp.Va %*% rnorm(no + np^2)#
+	# separate "observed" and "future" observations	y <- rall[opos,] + rnorm(length(opos), sd = sqrt(error.var))	yp <- rall[ppos,]	# determine threshold if not supplied	if(is.null(u)) { u <- quantile(yp, prob = lev/100) }	# determine true exceedance region	true.cL <- contourLines(pgrid$upx, pgrid$upy, matrix(yp, nrow = np, ncol = np), 		levels = u)	true.cL.coords <- get.contours(true.cL)
+plot.contourLines(true.cL)
+Plot contour lines from contourLinesplot.contourLines <- function(x, begin=1, end = length(x), add = FALSE, ...){	if(!add)	{		contours <- get.contours(x)		rx <- range(contours$x)		ry <- range(contours$y)		plot(rx, ry, type = "n", ...)#
+	}	for(i in begin:end)	{		lines(x[[i]]$x, x[[i]]$y, ...)	}}
+plot.contourLines(true.cL)
+true.cL
+get.contours(true.cL)
+a <- get.contours(true.cL)
+a$x
+Plot contour lines from contourLinesplot.contourLines <- function(x, begin=1, end = length(x), add = FALSE, ...){	if(!add)	{		contours <- get.contours(x)		rx <- range(contours[,1])		ry <- range(contours[,2])		plot(rx, ry, type = "n", ...)#
+	}	for(i in begin:end)	{		lines(x[[i]]$x, x[[i]]$y, ...)	}}
+plot(true.cL)
+true.cL[[1]]$x
+x <- true.cL
+add <- FALSE
+if(!add)	{		contours <- get.contours(x)		rx <- range(contours[,1])		ry <- range(contours[,2])		plot(rx, ry, type = "n", ...)#
+	}
+if(!add)	{		contours <- get.contours(x)		rx <- range(contours[,1])		ry <- range(contours[,2])		#plot(rx, ry, type = "n", ...)		plot(rx, ry, type = "n", ...)	}
+if(!add)	{		contours <- get.contours(x)		rx <- range(contours[,1])		ry <- range(contours[,2])		#plot(rx, ry, type = "n", ...)		plot(rx, ry, type = "n")	}
+begin <- 1
+end <- length(x)
+for(i in begin:end)	{		lines(x[[i]]$x, x[[i]]$y, ...)	}
+for(i in begin:end)	{		#lines(x[[i]]$x, x[[i]]$y, ...)		lines(x[[i]]$x, x[[i]]$y)	}
+plot.contourLines <- function(x, begin=1, end = length(x), add = FALSE, ...){	if(!add)	{		contours <- get.contours(x)		rx <- range(contours[,1])		ry <- range(contours[,2])		plot(rx, ry, type = "n")	}	for(i in begin:end)	{		lines(x[[i]]$x, x[[i]]$y)	}}
+plot.contourLines(true.cL)
+plot.contourLines(true.cL)
+plot.contourLines(true.cL, xlab = "x", ylab = "y")
+plot.contourLines <- function(x, begin=1, end = length(x), add = FALSE, ...){	if(!add)	{		contours <- get.contours(x)		rx <- range(contours[,1])		ry <- range(contours[,2])		plot(rx, ry, type = "n", ...)	}	for(i in begin:end)	{		lines(x[[i]]$x, x[[i]]$y, ...)	}}
+plot.contourLines(true.cL, xlab = "x", ylab = "y")
+?contourLines
+Take the list of contours from contourLines() and extracts coordinates get.contours=function(x){	x1 <- x2 <- NULL	for(i in 1:length(x))	{		x1 <- c(x1, x[[i]]$x)		x2 <- c(x2, x[[i]]$y)	}	cbind(x1,x2)}
+simulate "observed" and "future" observations	rall <- decomp.Va %*% rnorm(no + np^2)#
+	# separate "observed" and "future" observations	y <- rall[opos,] + rnorm(length(opos), sd = sqrt(error.var))	yp <- rall[ppos,]	# determine threshold if not supplied	if(is.null(u)) { u <- quantile(yp, prob = lev/100) }	# determine true exceedance region	true.cL <- contourLines(pgrid$upx, pgrid$upy, matrix(yp, nrow = np, ncol = np), 		levels = u)	true.cL.coords <- get.contours(true.cL)
+get.contours
+Take the list of contours from contourLines() and extracts coordinates get.contours=function(x){	x1 <- x2 <- NULL	for(i in 1:length(x))	{		x1 <- c(x1, x[[i]]$x)		x2 <- c(x2, x[[i]]$y)	}	cbind(x = x1,y = x2)}
+true.cL <- contourLines(pgrid$upx, pgrid$upy, matrix(yp, nrow = np, ncol = np), 		levels = u)	true.cL.coords <- get.contours(true.cL)
+true.cL.coords
+?install.packages
+Take the list of contours from contourLines() and extracts coordinates #
+get.contours=function(x)#
+{#
+	x1 <- x2 <- NULL#
+	for(i in 1:length(x))#
+	{#
+		x1 <- c(x1, x[[i]]$x)#
+		x2 <- c(x2, x[[i]]$y)#
+	}#
+	cbind(x = x1,y = x2)#
+}#
+#
+#Plot contour lines from contourLines#
+plot.contourLines <- function(x, begin=1, end = length(x), add = FALSE, ...)#
+{#
+	if(!add)#
+	{#
+		contours <- get.contours(x)#
+		rx <- range(contours[,1])#
+		ry <- range(contours[,2])#
+		plot(rx, ry, type = "n", ...)#
+	}#
+	for(i in begin:end)#
+	{#
+		lines(x[[i]]$x, x[[i]]$y, ...)#
+	}#
+}
+data(volcano)#
+ x <- 10*1:nrow(volcano)#
+ y <- 10*1:ncol(volcano)#
+ cL <- contourLines(x, y, volcano)#
+ plot(cL)
+data(volcano)#
+ x <- 10*1:nrow(volcano)#
+ y <- 10*1:ncol(volcano)#
+ cL <- contourLines(x, y, volcano)#
+ plot.contourLines(cL)

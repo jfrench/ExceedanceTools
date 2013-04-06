@@ -29,7 +29,7 @@ If poly.coords is supplied, the grid returned is the grid of midpoints contained
 \value{
   \item{pgrid}{An \eqn{np \times 2} matrix of locations (the midpoints of the pixelized grid).}
   \item{np}{The number of rows in pgrid.}
-  \item{p.in.grid}{A vector of 0s and 1s indicating whether the midpoint of each pixel is in the convex hull of poly.coords.  If poly.coords is provided, this is a vector of 1s.}
+  \item{p.in.grid}{A vector of 0s and 1s indicating whether the midpoint of each pixel is in the convex hull of poly.coords.  If poly.coords is not provided, this is a vector of 1s.}
   \item{ubx}{The pixel boundaries in the x-direction.}
   \item{uby}{The pixel boundaries in the y-direction.}
   \item{upx}{The pixel midpoints in the x-direction.}
@@ -44,14 +44,12 @@ Joshua French
 pgrid
 }
 \examples{
-x.min <- y.min <- 0
-x.max <- y.max <- 1
-ngrid <- 50
 
+pgrid <- create.pgrid2(seq(0, 1, len = 101), seq(0, 1, len = 101), midpoint = FALSE)
+pgridb <- create.pgrid2(seq(.005, .995, len = 100), seq(.005, .995, len = 100), midpoint = TRUE)
 
-pgrid <- create.pgrid(x.min, x.max, y.min, y.max, nx = ngrid, ny = ngrid, midpoint = FALSE)
-
-pgridb <- create.pgrid(.01, .99, .01, .99, nx = ngrid, ny = ngrid, midpoint = TRUE)
+# pgrids produced match
+range(pgrid$pgrid - pgridb$pgrid)
 
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

@@ -1,11 +1,8 @@
-statistics_sim_arg_check <- function(obj, level, alternative)
+statistics_sim_arg_check <- function(krige.obj, level, alternative)
 {
-	if(!is.null(obj))
+	if(is.null(krige.obj$sim))
 	{
-		if(is.null(obj$sim))
-		{
-			stop("krige.obj$sim cannot be NULL.  Try setting nsim > 0")
-		}
+			stop("krige.obj$sim cannot be NULL.  Try setting nsim > 0.")
 	}
 	if(!is.numeric(level) || length(level) > 1)
 	{

@@ -45,7 +45,7 @@ If poly.coords is supplied, the grid returned is the grid of midpoints contained
 \value{
   \item{pgrid}{An \eqn{np \times 2} matrix of locations (the midpoints of the pixelized grid).}
   \item{np}{The number of rows in pgrid.}
-  \item{p.in.grid}{A vector of 0s and 1s indicating whether the midpoint of each pixel is in the convex hull of poly.coords.  If poly.coords is provided, this is a vector of 1s.}
+  \item{p.in.grid}{A vector of 0s and 1s indicating whether the midpoint of each pixel is in the convex hull of poly.coords.  If poly.coords is not provided, this is a vector of 1s.}
   \item{ubx}{The pixel boundaries in the x-direction.}
   \item{uby}{The pixel boundaries in the y-direction.}
   \item{upx}{The pixel midpoints in the x-direction.}
@@ -63,7 +63,6 @@ pgrid2
 x.min <- y.min <- 0
 x.max <- y.max <- 1
 ngrid <- 50
-
 
 pgrid <- create.pgrid(x.min, x.max, y.min, y.max, nx = ngrid, ny = ngrid, midpoint = FALSE)
 
