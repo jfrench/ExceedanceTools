@@ -60,7 +60,7 @@ spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),
 
 # Predict responses at pgrid locations
 krige.obj <- krige.uk(y = as.vector(y), V = spcov$V, Vp = spcov$Vp, 
-	Vop = spcov$Vop, X = X, Xp = Xp, nsim = 2000, 
+	Vop = spcov$Vop, X = X, Xp = Xp, nsim = 100, 
 	Ve.diag = rep(1/3, length(y)) , method = "chol")
 
 # Simulate distribution of test statistic for different alternatives
