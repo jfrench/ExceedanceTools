@@ -254,33 +254,14 @@ plot.pgrid <- function(x, set, col = "gray", add = FALSE, ...)
 {
 	if(is.null(x$ubx) || is.null(x$uby))
 	{
-		stop("pgrid must contain boundaries.  Use create.pgrid or create.pgrid2 function")
+		stop("pgrid must contain boundaries.  Use create.pgrid or create.pgrid2 function.")
 	}
-	nx <- length(x$ubx)
-	ny <- length(x$uby)
-	
-	#grid point bound for nw, ne, se, and sw of pcoords
-	nw <- as.matrix(expand.grid(x$ubx[-1], x$uby[-ny]))[x$p.in.grid,]
-	ne <- as.matrix(expand.grid(x$ubx[-nx], x$uby[-ny]))[x$p.in.grid,]
-	se <- as.matrix(expand.grid(x$ubx[-nx], x$uby[-1]))[x$p.in.grid,]
-	sw <- as.matrix(expand.grid(x$ubx[-1], x$uby[-1]))[x$p.in.grid,]
-	
-	if(!add)
-	{
-		plot(x$upx, x$upy, type = "n", ...)
-	}
-	
-	if(length(set > 0))
-	{
-		for(i in set)
-		{
-			#Joins the x-coords of the border of the pixel
-			x.border=c(nw[i,1], ne[i,1], se[i,1], sw[i,1], nw[i,1])
-			#Joins the y-coords of the border of the pixel
-			y.border=c(nw[i,2], ne[i,2], se[i,2], sw[i,2], nw[i,2])
-			polygon(x.border,y.border, col=col, border=col)
-		}
-	}
+
+	nx <- length(x$upx)
+	ny <- length(x$upy)
+	setvec <- rep(0, nrow(x$pgrid))
+	setvec[set] <- 1
+	image(x$upx, x$upy, matrix(setvec, nx, ny), col = c(0, col), add = add, ...)
 }
 
 

@@ -1,8 +1,8 @@
 Package: ExceedanceTools
 Type: Package
 Title: Confidence Regions for Exceedance Regions and Contour Lines
-Version: 1.1.1
-Date: 2013-08-06
+Version: 1.1.2
+Date: 2014-02-07
 Author: Joshua French
 Maintainer: Joshua French <joshua.french@ucdenver.edu>
 Description: Tools for constructing confidence regions for exceedance regions and contour lines.
