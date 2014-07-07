@@ -10,10 +10,10 @@ exceedance.ci(statistic.sim.obj, conf.level = 0.95, type = "null")
 
 \item{conf.level}{The desired confidence level of the confidence region.}
 
-\item{type}{A character vector of \code{'null'} or \code{'rejection'} indicating whether the function should return the null region or rejection region, respectively, related to \code{statistic.sim.obj}.}
+\item{type}{Whether the function should return the null region or rejection region of exceedance confidence region  Options are \code{"null"} or \code{"rejection"}.  Default is \code{"null"}.}
 }
 \value{
-Returns a numeric vector with the set of pixels comprising the null or rejection region related to \code{statistic.sim}.
+Returns a numeric vector with the set of pixels comprising the null or rejection region related to \code{statistic.sim.obj}.
 }
 \description{
 \code{exceedance.ci} returns a confidence set for an exceedance region or contour line.
@@ -34,22 +34,31 @@ coords = cbind(sdata$x1, sdata$x2)
 X <- cbind(1, coords)
 Xp <- cbind(1, pcoords)
 
-# Generate covariance matrices V, Vp, Vop using appropriate parameters for observed data and responses to be predicted
-spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5), error.var = 1/3, finescale.var = 0, pcoords = pcoords)
+# Generate covariance matrices V, Vp, Vop using appropriate parameters for
+# observed data and responses to be predicted
+spcov <- cov.sp(coords = coords, sp.type = "exponential",
+ sp.par = c(1, 1.5), error.var = 1/3, finescale.var = 0, pcoords = pcoords)
 
 # Predict responses at pgrid locations
-krige.obj <- krige.uk(y = as.vector(sdata$y), V = spcov$V, Vp = spcov$Vp, Vop = spcov$Vop, X = X, Xp = Xp, nsim = 100, Ve.diag = rep(1/3, length(sdata$y)) , method = "chol")
+krige.obj <- krige.uk(y = as.vector(sdata$y), V = spcov$V, Vp = spcov$Vp,
+ Vop = spcov$Vop, X = X, Xp = Xp, nsim = 100,
+ Ve.diag = rep(1/3, length(sdata$y)) , method = "chol")
 
 # Simulate distribution of test statistic for different alternatives
-statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, level = 5, alternative = "less")
-statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, level = 5, alternative = "greater")
+statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, level = 5,
+ alternative = "less")
+statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, level = 5,
+ alternative = "greater")
 # Construct null and rejection sets for two scenarios
 n90 <- exceedance.ci(statistic.sim.obj.less, conf.level = .90, type = "null")
 r90 <- exceedance.ci(statistic.sim.obj.greater,conf.level = .90, type = "rejection")
 # Plot results
 plot(pgrid, n90, col="blue", add = FALSE, xlab = "x", ylab = "y")
 plot(pgrid, r90, col="orange", add = TRUE)
-legend("bottomleft", legend = c("contains true exceedance region with 90 percent confidence", "is contained in true exceedance region with 90 percent confidence"),        col = c("blue", "orange"), lwd = 10)
+legend("bottomleft",
+ legend = c("contains true exceedance region with 90 percent confidence",
+   "is contained in true exceedance region with 90 percent confidence"),
+   col = c("blue", "orange"), lwd = 10)
 }
 \author{
 Joshua French

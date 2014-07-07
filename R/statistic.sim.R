@@ -6,13 +6,13 @@
 #' 
 #' @param krige.obj An object from the function \code{krige.uk} in the \code{SpatialTools} package.
 #' @param level The threshold/exceedance level under consideration.
-#' @param alternative Whether the region under consideration is for the values greater than level (\code{alternative = "less"}), for the values less than level (\code{alternative = "greater"}), or contour lines (\code{alternative = "two.sided"}). Defaults to "less".
+#' @param alternative Indicates the type of exceedance region or level curve under consideration.  For exceedances above a threshold, use (\code{alternative = "less"}).  For exceedances below a threshold, use (\code{alternative = "greater"}).  For contour lines, use (\code{alternative = "two.sided"}). Defaults to "less".
 #' @param ... Additional arguments when \code{alternative = "two.sided"}. See Details.
 #' 
 #' @return Returns a list with components: 
 #' \item{statistic}{A vector with the observed values of the test statistic.}
 #' \item{statistic.sim}{A vector with the observed values of the test statistic.}
-#' \item{alternative}{A character string specifying the alternative hypothesis provided to \code{statistic.sim}.}
+#' \item{alternative}{The alternative hypothesis provided to \code{statistic.sim}.}
 #' \item{level}{The threshold level under consideration.}
 #' 
 #' @author Joshua French
@@ -34,22 +34,32 @@
 #' X <- cbind(1, coords)
 #' Xp <- cbind(1, pcoords)
 #' 
-#' # Generate covariance matrices V, Vp, Vop using appropriate parameters for observed data and responses to be predicted
-#' spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5), error.var = 1/3, finescale.var = 0, pcoords = pcoords)
+#' # Generate covariance matrices V, Vp, Vop using appropriate parameters for
+#' # observed data and responses to be predicted
+#' spcov <- cov.sp(coords = coords, sp.type = "exponential", sp.par = c(1, 1.5),
+#'  error.var = 1/3, finescale.var = 0, pcoords = pcoords)
 #' 
 #' # Predict responses at pgrid locations
-#' krige.obj <- krige.uk(y = as.vector(sdata$y), V = spcov$V, Vp = spcov$Vp, Vop = spcov$Vop, X = X, Xp = Xp, nsim = 100, Ve.diag = rep(1/3, length(sdata$y)) , method = "chol")
+#' krige.obj <- krige.uk(y = as.vector(sdata$y), V = spcov$V, Vp = spcov$Vp, 
+#'  Vop = spcov$Vop, X = X, Xp = Xp, nsim = 50, 
+#'  Ve.diag = rep(1/3, length(sdata$y)) , method = "chol")
 #'                 
 #' # Simulate distribution of test statistic for different alternatives
-#' statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, level = 5, alternative = "less")
-#' statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, level = 5, alternative = "greater")
+#' statistic.sim.obj.less <- statistic.sim(krige.obj = krige.obj, level = 5,
+#'  alternative = "less")
+#' statistic.sim.obj.greater <- statistic.sim(krige.obj = krige.obj, level = 5,
+#'  alternative = "greater")
 #' # Construct null and rejection sets for two scenarios
 #' n90 <- exceedance.ci(statistic.sim.obj.less, conf.level = .90, type = "null")
-#' r90 <- exceedance.ci(statistic.sim.obj.greater,conf.level = .90, type = "rejection")       
+#' r90 <- exceedance.ci(statistic.sim.obj.greater,conf.level = .90, 
+#'  type = "rejection")       
 #' # Plot results
 #' plot(pgrid, n90, col="blue", add = FALSE, xlab = "x", ylab = "y")
 #' plot(pgrid, r90, col="orange", add = TRUE)
-#' legend("bottomleft", legend = c("contains true exceedance region with 90 percent confidence", "is contained in true exceedance region with 90 percent confidence"),        col = c("blue", "orange"), lwd = 10)  
+#' legend("bottomleft", 
+#'  legend = c("contains true exceedance region with 90 percent confidence", 
+#'  "is contained in true exceedance region with 90 percent confidence"),
+#'  col = c("blue", "orange"), lwd = 10)  
 #' 
 #' # Example for level curves
 #' data(colorado)
@@ -57,7 +67,7 @@
 #' odata <- colorado$odata    
 #' 
 #' # Set up example
-#' nsim <- 100
+#' nsim <- 50
 #' u <- log(16)
 #' np <- 26
 #' conf.level <- 0.90   
@@ -76,15 +86,20 @@
 #' Xp <- cbind(1, pcoords)           
 #' 
 #' # Estimate covariance parameters
-#' cov.est <- maxlik.cov.sp(X, odata, sp.type = "exponential", range.par = 1.12,                          error.ratio = 0.01, reml = TRUE, coords = ocoords)
+#' cov.est <- maxlik.cov.sp(X, odata, sp.type = "exponential", range.par = 1.12,
+#'  error.ratio = 0.01, reml = TRUE, coords = ocoords)
 #' 
 #' # Create covariance matrices
-#' myCov <- cov.sp(coords = ocoords, sp.type = "exponential", sp.par = cov.est$sp.par, error.var = cov.est$error.var, pcoords = pcoords)
+#' myCov <- cov.sp(coords = ocoords, sp.type = "exponential", 
+#'  sp.par = cov.est$sp.par, error.var = cov.est$error.var, pcoords = pcoords)
 #' 
 #' # Krige and do conditional simulation 
-#' krige.obj <- krige.uk(y = odata, V = myCov$V, Vp = myCov$Vp, Vop = myCov$Vop, X = X, Xp = Xp, nsim = nsim, Ve.diag = rep(cov.est$error.var, length(odata)))
+#' krige.obj <- krige.uk(y = odata, V = myCov$V, Vp = myCov$Vp, Vop = myCov$Vop, 
+#'  X = X, Xp = Xp, nsim = nsim, Ve.diag = rep(cov.est$error.var, 
+#'  length(odata)))
 #' 
-#' # Create user covariance function for simulating statistic for confidence regions
+#' # Create user covariance function for simulating statistic for confidence 
+#' # regions
 #' user.cov <- function(cLcoords,...)
 #' {
 #'    arglist <- list(...)
@@ -100,15 +115,21 @@
 #' }
 #' 
 #' # Simulation statistic for confidence regions
-#' statistic.sim.obj <- statistic.sim(krige.obj = krige.obj, level = u, alternative = "two.sided", user.cov = user.cov, y = odata, pgrid = pgrid, X = X, coords = ocoords, pcoords = pcoords, V = myCov$V, sp.type = "exponential", sp.par = cov.est$sp.par)
+#' statistic.sim.obj <- statistic.sim(krige.obj = krige.obj, level = u, 
+#'  alternative = "two.sided", user.cov = user.cov, y = odata, pgrid = pgrid, 
+#'  X = X, coords = ocoords, pcoords = pcoords, V = myCov$V, 
+#'  sp.type = "exponential", sp.par = cov.est$sp.par)
 #' 
 #' # Create 90% confidence region
-#' n90 <- exceedance.ci(statistic.sim.obj, conf.level = conf.level, type = "null")
+#' n90 <- exceedance.ci(statistic.sim.obj, conf.level = conf.level, 
+#'  type = "null")
 #' # Get estimated contour lines
-#' cL <- contourLines(pgrid$upx, pgrid$upy, matrix(krige.obj$pred, nrow = np), level = u)
+#' cL <- contourLines(pgrid$upx, pgrid$upy, matrix(krige.obj$pred, nrow = np), 
+#'  level = u)
 #' 
 #' # Plot results
-#' plot(ocoords, xlab = "longitude", ylab = "latitude", type = "n", cex.lab = 1.5, cex.axis = 1.5)
+#' plot(ocoords, xlab = "longitude", ylab = "latitude", type = "n", 
+#'  cex.lab = 1.5, cex.axis = 1.5)
 #' plot(pgrid, n90, col = "grey", add = TRUE)
 #' plot.contourLines(cL, col="black", lwd=2, lty = 2, add = TRUE)
 

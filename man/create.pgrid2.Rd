@@ -6,9 +6,9 @@
 create.pgrid2(xgrid, ygrid, midpoints = FALSE, poly.coords = NULL)
 }
 \arguments{
-\item{xgrid}{A vector of locations in the x-direction.}
+\item{xgrid}{A vector of locations in the x direction.}
 
-\item{ygrid}{A vector of location in the y-direction.}
+\item{ygrid}{A vector of location in the y direction.}
 
 \item{midpoints}{A logical value (\code{TRUE} or \code{FALSE}) indicating whether the boundary values are for the midpoint of a pixel (\code{midpoints = TRUE}) or for the boundary of the spatial domain in general (\code{midpoints = FALSE}, in which case the midpoints are calculated internally). Default is \code{FALSE}.}
 
@@ -25,16 +25,18 @@ Returns an object of class pgrid with the following components:
 \item{upy}{The pixel midpoints in the y-direction.}
 }
 \description{
-\code{create.pgrid2} creates a grid of locations fusing vectors of x- and y-coordinates.
+\code{create.pgrid2} creates a grid of locations fusing vectors of x and y coordinates.
 }
 \details{
 The key argument in the function midpoints. If this is \code{TRUE}, it is assumed that the boundaries of the spatial domain correspond to the midpoints of the cell/pixel in the grid. Otherwise, it is assumed that the boundaries correspond to the actual borders of the region of interest. If \code{poly.coords} is supplied, the grid returned is the grid of midpoints contained in the convex hull of \code{poly.coords}.
 }
 \examples{
-pgrid <- create.pgrid2(seq(0, 1, len = 101), seq(0, 1, len = 101), midpoint = FALSE)
-pgridb <- create.pgrid2(seq(.005, .995, len = 100), seq(.005, .995, len = 100), midpoint = TRUE)
+seq1 = seq(0, 1, len = 101)
+pgrida <- create.pgrid2(seq1, seq1, midpoint = FALSE)
+seq2 = seq(.005, .995, len = 100)
+pgridb <- create.pgrid2(seq2, seq2, midpoint = TRUE)
 # pgrids produced match
-range(pgrid$pgrid - pgridb$pgrid)
+range(pgrida$pgrid - pgridb$pgrid)
 }
 \author{
 Joshua French
