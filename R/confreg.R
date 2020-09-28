@@ -15,7 +15,7 @@
 #' @param conf.level The confidence level of the confidence region.  Default is 0.95.
 #' @param direction The direction of the exceedance region.  \code{">"} indicates the exceedance region is values above a threshold, while \code{"<"} indicates values below a threshold.
 #' @param type \code{"o"} indicates on outer confidence region while \code{"i"} indicates in inner confidence region.
-#' @param method \code{"test"} indicates a testing-based methdo, while \code{"direct"} indicates a direct method using joint probabilities.
+#' @param method \code{"test"} indicates a testing-based method, while \code{"direct"} indicates a direct method using joint probabilities.
 #' @param greedy Only applicable for the direct construction method.  Default is \code{FALSE}.  If \code{TRUE}, then grid cells are added to the confidence region using a greedy algorithm based on joint probability. 
 #' 
 #' @return Returns an object of class \code{confreg} with the following components: 
