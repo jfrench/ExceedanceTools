@@ -1,16 +1,18 @@
-#' Plot set of pixels on grid
+#' Plots \code{pgrid} object.
 #' 
-#' \code{plot} plots a grid of pixels based on an object from \code{pgrid} or \code{confreg}.
+#' \code{plot.pgrid} plots a grid of pixels based on a \code{pgrid} object.  
 #' 
 #' If a vector of pixel indices is supplied to \code{set}, then those pixels will be colored \code{col} by this function and the \code{type} argument has no effect.  On the other hand, if the \code{set} argument is of class \code{confreg}, then the function digs in to display either the \code{confidence} or \code{complement} set in the \code{confreg} object.  In that case, \code{type} is used to decide which set to display.
 #' 
-#' @param x An object returned from the \code{pgrid} function.
+#' @param x An \code{pgrid} object returned from the \code{pgrid} function.
 #' @param set A vector which contains the indices of the pixels/cells that should be plotted.  OR a \code{confreg} object from the \code{confreg} function.  See Details.
 #' @param col The color of the plotted pixels.
 #' @param add A logical value indicating whether the pixels should be added to an existing plot (\code{add = TRUE}) or should the pixels be plotted on a new plot (\code{add = FALSE}).
-#' @param type The type of set of plot if \code{set} of of class \code{confreg}.  Th default is \code{"confidence"}, while the other option is \code{complement}, based on the components of the \code{confreg} object.
-#' @param ... Additional arguments that will be passed to the plot function (assuming \code{add} \code{=} \code{FALSE}.)
+#' @param type The type of set of plot if \code{set} of of class \code{confreg}.  The default is \code{"confidence"}, while the other option is \code{complement}, based on the components of the \code{confreg} object.
+#' @param ... Additional arguments that will be passed to the \code{image} function (assuming \code{add=FALSE}).
 #' 
+#' @importFrom graphics plot image
+#' @method plot pgrid
 #' @return This function does not return anything; it only creates a new plot or modifies an existing plot.
 #' @author Joshua French
 #' @export
@@ -75,13 +77,13 @@ plot.pgrid <- function(x, set, col = "gray", add = FALSE, type = "confidence", .
     
     if(type == "confidence"){ setvec = conf }
     else{ setvec = comp } 
-    image(x$upx, x$upy, matrix(setvec, nx, ny), col = col, add = add, ...)
+    graphics::image(x$upx, x$upy, matrix(setvec, nx, ny), col = col, add = add, ...)
   }
   else
   {
-    setvec <- rep(0, nrow(x$pgrid))
-    setvec[set] <- 1
-    image(x$upx, x$upy, matrix(setvec, nx, ny), col = c(0, col), add = add, ...)
+    setvec <- rep(0, nx*ny)
+    setvec[x$p.in.grid][set] <- 1
+    graphics::image(x$upx, x$upy, matrix(setvec, nx, ny), col = c(NA, col), add = add, ...)
   }
 }
 

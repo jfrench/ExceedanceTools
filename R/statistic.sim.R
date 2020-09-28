@@ -192,7 +192,7 @@ statistic.sim <- function(krige.obj, level, alternative = "less", ...)
     for(m in 1:nsim)
     {
       simmat <- matrix(krige.obj$sim[, m], nrow = npx, ncol = npy)
-      cL <- contourLines(pgrid$upx, pgrid$upy, simmat, levels = level)
+      cL <- grDevices::contourLines(pgrid$upx, pgrid$upy, simmat, levels = level)
       
       if(length(cL) > 0)
       {

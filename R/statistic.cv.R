@@ -61,15 +61,15 @@ statistic.cv <- function(statistic.sim.obj, conf.level = .95)
   #Determine critical value for statistic
   if(alternative == "less")
   {
-    cv <- quantile(statistic.sim.obj$statistic.sim, 
+    cv <- stats::quantile(statistic.sim.obj$statistic.sim, 
                    prob = 1 - conf.level, type = type)
   }else if(alternative == "greater")
   {
-    cv <- quantile(statistic.sim.obj$statistic.sim, 
+    cv <- stats::quantile(statistic.sim.obj$statistic.sim, 
                    prob = conf.level, type = type)
   }else
   {
-    cv <- quantile(statistic.sim.obj$statistic.sim, 
+    cv <- stats::quantile(statistic.sim.obj$statistic.sim, 
                    prob = conf.level, type = type)
   }
   

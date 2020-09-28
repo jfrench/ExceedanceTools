@@ -1,0 +1,12 @@
+# 1.3.1 - Fix plot.pgrid bug for points in polygon
+
+#1.2.3 - Readded confreg function.
+
+#1.2.2 - updated documentation.  Removed confreg function.
+
+#1.2.1 - fixed a small bug in confreg.jointPredictiveSample related to method 1.  It caused a problem only if the exceedance region was NA for a large number of samples.
+
+#1.2.0 - added confreg function to construct confidence regions jointPredictiveSample.  Fixed bug in create.pgrid when midpoint == TRUE.  Modified plot.pgrid to automatically
+plot confidence regions from confreg function.  A major benefit is that this automatically takes into account the poly.grid function and plots the pixels in the correct places with pgrid$pgrid has few observations that the total grid of locations.
+
+#1.1.2 - modified plot.pgrid so that is was insanely fast using the image function instead of manually plotting each pixel.
