@@ -4,8 +4,16 @@
 \alias{confreg}
 \title{Construct confidence regions for exceedance (excursion) sets.}
 \usage{
-confreg(obj, level, statistic = NULL, conf.level = 0.95, direction = ">",
-  type = "o", method = "test", greedy = FALSE)
+confreg(
+  obj,
+  level,
+  statistic = NULL,
+  conf.level = 0.95,
+  direction = ">",
+  type = "o",
+  method = "test",
+  greedy = FALSE
+)
 }
 \arguments{
 \item{obj}{An object of the appropriate type (\code{matrix}, \code{krigeConditionalSample}, or \code{jointPredictiveSample}.  See Details.}
@@ -20,7 +28,7 @@ confreg(obj, level, statistic = NULL, conf.level = 0.95, direction = ">",
 
 \item{type}{\code{"o"} indicates on outer confidence region while \code{"i"} indicates in inner confidence region.}
 
-\item{method}{\code{"test"} indicates a testing-based methdo, while \code{"direct"} indicates a direct method using joint probabilities.}
+\item{method}{\code{"test"} indicates a testing-based method, while \code{"direct"} indicates a direct method using joint probabilities.}
 
 \item{greedy}{Only applicable for the direct construction method.  Default is \code{FALSE}.  If \code{TRUE}, then grid cells are added to the confidence region using a greedy algorithm based on joint probability.}
 }
@@ -34,7 +42,7 @@ Returns an object of class \code{confreg} with the following components:
 }
 \details{
 \code{obj} can be an object of class \code{matrix},  \code{krigeConditionalSample}, or \code{jointPredictiveSample}.  If \code{obj} is a \code{matrix}, then it should have \code{m} rows and \code{nsim} columns.  In that case, each row of \code{obj} corresponds to a sample from the conditional distribution of the response conditional on the observed data.  Each row represents a different location.  Generally, these locations are assumed to be on a grid spanning the spatial domain of interest.  A \code{krigeConditionalSample} object can be obtained using the \code{krige.sk}, \code{krige.ok}, 
-or \code{krige.uk} functions in the \code{SpatialTools} package.  In these functions, the \code{nsim} argument must be greater than 0, and indicates the number of samples used to construct the confidence region.  A \code{jointPredictiveSample} object can be obtained using the \code{spLMPredictJoint} function in the \code{SpatialTools} package.  Since this is in the context of Bayesian statistics, the function actually produces credible region.
+or \code{krige.uk} functions in the \code{SpatialTools} package.  In these functions, the \code{nsim} argument must be greater than 0, and indicates the number of samples used to construct the confidence region.  A \code{jointPredictiveSample} object can be obtained using the \code{spLMPredictJoint} function in the \code{SpatialTools} package.  Since this is in the context of Bayesian statistics, the function actually produces credible region.  
 
 If \code{statistic} is supplied for the direct construction procedure, then the locations are ordered by marginal probability and then the statistic.  \code{statistic} should be a vector of length \code{m}, where \code{m} is the number of prediction locations at which samples were drawn for in \code{obj}.
 
@@ -100,6 +108,19 @@ stat2 = apply(y1, 1, myfun2)
 myconf = confreg(y1, level = u, statistic = NULL, direction = ">", type = "o", method = "direct")
 myconf2 = confreg(y1, level = u, statistic = stat1, direction = ">", type = "o")
 myconf3 = confreg(y1, level = u, statistic = stat2, direction = ">", type = "o")
+}
+\references{
+Joshua P. French and Stephan R. Sain (2013).
+Spatio-temporal exceedance locations and confidence
+regions.  Annals of Applied Statistics.  7(3):1421-1449.
+
+French, J. P. (2014), Confidence regions for the level
+curves of spatial data, Environmetrics, 25, pages
+498–512, DOI: 10.1002/env.2295
+
+French, J. P., and Hoeting, J. A. (2016) Credible regions
+for exceedance sets of geostatistical data.
+Environmetrics, 27: 4–14. doi: 10.1002/env.2371.
 }
 \author{
 Joshua French

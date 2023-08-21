@@ -23,6 +23,18 @@
 #' \item{complement}{The complement of the confidence region.}
 #' 
 #' @importFrom matrixStats colProds
+#' @references 
+#' Joshua P. French and Stephan R. Sain (2013).
+#' Spatio-temporal exceedance locations and confidence
+#' regions.  Annals of Applied Statistics.  7(3):1421-1449.
+#'
+#' French, J. P. (2014), Confidence regions for the level
+#' curves of spatial data, Environmetrics, 25, pages
+#' 498–512, DOI: 10.1002/env.2295
+#'
+#' French, J. P., and Hoeting, J. A. (2016) Credible regions
+#' for exceedance sets of geostatistical data.
+#' Environmetrics, 27: 4–14. doi: 10.1002/env.2371.
 #' @author Joshua French
 #' @export
 #' @examples 
@@ -90,11 +102,11 @@ confreg = function(obj, level, statistic = NULL,
                    conf.level = 0.95, direction = ">", 
                    type = "o", method = "test", greedy = FALSE)
 {
-  if(!is.element(class(obj), c("matrix", "krigeConditionalSample", "jointPredictiveSample")))
+  if(!any(is.element(class(obj), c("matrix", "krigeConditionalSample", "jointPredictiveSample"))))
   {
     stop("obj is not of appropriate class")
   }
-  if(class(obj) == "krigeConditionalSample") obj = obj$sim
+  if(is.element("krigeConditionalSample", class(obj))) obj = obj$sim
   m = nrow(obj)
   nsim = ncol(obj)
   if(length(level) > 1) stop("length(level)!=1")

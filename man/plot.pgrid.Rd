@@ -4,8 +4,7 @@
 \alias{plot.pgrid}
 \title{Plots \code{pgrid} object.}
 \usage{
-\method{plot}{pgrid}(x, set, col = "gray", add = FALSE,
-  type = "confidence", ...)
+\method{plot}{pgrid}(x, set, col = "gray", add = FALSE, type = "confidence", ...)
 }
 \arguments{
 \item{x}{An \code{pgrid} object returned from the \code{pgrid} function.}

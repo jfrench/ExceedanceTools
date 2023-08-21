@@ -4,7 +4,9 @@
 \name{colorado}
 \alias{colorado}
 \title{Colorado precipitation data}
-\format{A list.}
+\format{
+A list.
+}
 \source{
 National Center for Atmospheric Research
 }

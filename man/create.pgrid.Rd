@@ -4,8 +4,16 @@
 \alias{create.pgrid}
 \title{Create grid of locations.}
 \usage{
-create.pgrid(xmin, xmax, ymin, ymax, nx, ny, midpoints = FALSE,
-  poly.coords = NULL)
+create.pgrid(
+  xmin,
+  xmax,
+  ymin,
+  ymax,
+  nx,
+  ny,
+  midpoints = FALSE,
+  poly.coords = NULL
+)
 }
 \arguments{
 \item{xmin}{The minimum value of the boundary of the x coordinates of the spatial domain.}

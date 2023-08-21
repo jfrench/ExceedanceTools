@@ -4,7 +4,9 @@
 \name{sdata}
 \alias{sdata}
 \title{Synthetic data}
-\format{A data frame.}
+\format{
+A data frame.
+}
 \usage{
 data(sdata)
 }

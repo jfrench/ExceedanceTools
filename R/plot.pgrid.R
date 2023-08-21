@@ -65,8 +65,7 @@ plot.pgrid <- function(x, set, col = "gray", add = FALSE, type = "confidence", .
 {
   nx <- length(x$upx)
   ny <- length(x$upy)
-  if(class(set) == "confreg")
-  {
+  if(is.element("confreg", class(set)))  {
     type = match.arg(type, c("confidence", "complement"))
     conf <- comp <- rep(NA, nx*ny)
     conf2 <- comp2 <- rep(NA, nrow(x$pgrid))
@@ -78,9 +77,7 @@ plot.pgrid <- function(x, set, col = "gray", add = FALSE, type = "confidence", .
     if(type == "confidence"){ setvec = conf }
     else{ setvec = comp } 
     graphics::image(x$upx, x$upy, matrix(setvec, nx, ny), col = col, add = add, ...)
-  }
-  else
-  {
+  } else {
     setvec <- rep(0, nx*ny)
     setvec[x$p.in.grid][set] <- 1
     graphics::image(x$upx, x$upy, matrix(setvec, nx, ny), col = c(NA, col), add = add, ...)
