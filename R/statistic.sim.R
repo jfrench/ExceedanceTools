@@ -1,22 +1,52 @@
 #' Simulates statistics related to exceedance region.
-#' 
-#' \code{statistic.sim} simulates statistics related to the construction of confidence regions for exceedance sets and contour lines.
-#' 
-#' When \code{alternative = "two.sided"}, the \code{...} argument must include \code{user.cov} (a user-specified covariance function), \code{pgrid} (the grid of locations to be predicted, produced by \code{create.pgrid} or \code{create.pgrid2}), \code{X} (the matrix of covariates for the observed data), and any other arguments needed by \code{user.cov}. Note that \code{user.cov} should take \code{cLcoords} as its first argument (a matrix containing the coordinates of contour lines under consideration). Additional arguments to \code{user.cov} are passed internally using the \code{...} argument. The \code{user.cov} function should return a list with values \code{V} (the covariance matrix of the observed data), \code{Vop} (the cross-covariance matrix between the observed data and the responses with coordinates in cL), \code{Vp} (the covariance matrix of the responses with coordinates in \code{cL}), and \code{Xp} (the matrix of covariates for the coordinates contained in \code{cL}). See the Examples section.
-#' 
-#' @param krige.obj An object from the function \code{krige.uk} in the \code{SpatialTools} package.
-#' @param level The threshold/exceedance level under consideration.
-#' @param alternative Indicates the type of exceedance region or level curve under consideration.  For exceedances above a threshold, use (\code{alternative = "less"}).  For exceedances below a threshold, use (\code{alternative = "greater"}).  For contour lines, use (\code{alternative = "two.sided"}). Defaults to "less".
-#' @param ... Additional arguments when \code{alternative = "two.sided"}. See Details.
-#' 
-#' @return Returns a list with components: 
-#' \item{statistic}{A vector with the observed values of the test statistic.}
-#' \item{statistic.sim}{A vector with the observed values of the test statistic.}
-#' \item{alternative}{The alternative hypothesis provided to \code{statistic.sim}.}
-#' \item{level}{The threshold level under consideration.}
-#' 
+#'
+#' \code{statistic.sim} simulates statistics related to the
+#' construction of confidence regions for exceedance sets
+#' and contour lines.
+#'
+#' When \code{alternative = "two.sided"}, the \code{...}
+#' argument must include \code{user.cov} (a user-specified
+#' covariance function), \code{pgrid} (the grid of locations
+#' to be predicted, produced by \code{create.pgrid} or
+#' \code{create.pgrid2}), \code{X} (the matrix of covariates
+#' for the observed data), and any other arguments needed by
+#' \code{user.cov}. Note that \code{user.cov} should take
+#' \code{cLcoords} as its first argument (a matrix
+#' containing the coordinates of contour lines under
+#' consideration). Additional arguments to \code{user.cov}
+#' are passed internally using the \code{...} argument. The
+#' \code{user.cov} function should return a list with values
+#' \code{V} (the covariance matrix of the observed data),
+#' \code{Vop} (the cross-covariance matrix between the
+#' observed data and the responses with coordinates in cL),
+#' \code{Vp} (the covariance matrix of the responses with
+#' coordinates in \code{cL}), and \code{Xp} (the matrix of
+#' covariates for the coordinates contained in \code{cL}).
+#' See the Examples section.
+#'
+#' @param krige.obj An object from the function
+#'   \code{krige.uk} in the \code{SpatialTools} package.
+#' @param level The threshold/exceedance level under
+#'   consideration.
+#' @param alternative Indicates the type of exceedance
+#'   region or level curve under consideration.  For
+#'   exceedances above a threshold, use (\code{alternative =
+#'   "less"}).  For exceedances below a threshold, use
+#'   (\code{alternative = "greater"}).  For contour lines,
+#'   use (\code{alternative = "two.sided"}). Defaults to
+#'   "less".
+#' @param ... Additional arguments when \code{alternative =
+#'   "two.sided"}. See Details.
+#'
+#' @return Returns a list with components:
+#'   \item{statistic}{A vector with the observed values of
+#'   the test statistic.} \item{statistic.sim}{A vector with
+#'   the observed values of the test statistic.}
+#'   \item{alternative}{The alternative hypothesis provided
+#'   to \code{statistic.sim}.} \item{level}{The threshold
+#'   level under consideration.}
+#'
 #' @author Joshua French
-#' @import SpatialTools
 #' @export
 #' @examples
 #' library(SpatialTools)
