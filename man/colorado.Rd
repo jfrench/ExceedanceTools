@@ -14,7 +14,13 @@ National Center for Atmospheric Research
 data(colorado)
 }
 \description{
-Data related to Colorado precipitation in May 1997. Taken from \url{http://www.image.ucar.edu/Data/US.monthly.met/}. Data is contained in a list with components \code{odata} (containing a transformed precipitation variable) and \code{ocoords} containing the longitude and latitude of the associated sites.
+Data related to Colorado precipitation in
+  May 1997. Taken from
+  \url{https://www.image.ucar.edu/Data/US.monthly.met/}.
+  Data is contained in a list with components
+  \code{odata} (containing a transformed precipitation
+  variable) and \code{ocoords} containing the longitude
+  and latitude of the associated sites.
 }
 \author{
 Joshua French
