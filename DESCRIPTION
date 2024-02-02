@@ -9,6 +9,8 @@ Description: Provides methods for constructing confidence or credible regions
     for exceedance sets and contour lines.
 License: GPL (>=2)
 LazyLoad: yes
+URL: https://github.com/jfrench/ExceedanceTools
+BugReports: https://github.com/jfrench/ExceedanceTools/issues
 Depends:
     R (>= 2.12.0)
 Imports:
